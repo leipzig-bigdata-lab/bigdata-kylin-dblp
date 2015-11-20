@@ -154,7 +154,7 @@ public class Parser {
         String file;
 
         if(args.length < 1) {
-            System.err.println("Usage: java -jar dblp-importer.jar /path/to/dblp.xml");
+            System.err.println("Usage: dblp-importer /local/dblp.xml|stdin");
             System.exit(1);
             return;
         }
@@ -165,7 +165,11 @@ public class Parser {
         Writer publicationOutput;
         Writer collectionOutput;
         try {
-            dblpInput = new FileInputStream(file);
+            if("stdin".equals(file)) {
+                dblpInput = System.in;
+            } else {
+                dblpInput = new FileInputStream(file);
+            }
             publicationOutput = new OutputStreamWriter(new FileOutputStream(file + "-pub"), StandardCharsets.UTF_8);
             collectionOutput = new OutputStreamWriter(new FileOutputStream(file + "-col"), StandardCharsets.UTF_8);
         } catch (FileNotFoundException e) {
