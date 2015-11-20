@@ -164,23 +164,23 @@ public class Parser {
         InputStream dblpInput;
         Writer publicationOutput;
         Writer collectionOutput;
-		try {
-			dblpInput = new FileInputStream(file);
-	        publicationOutput = new OutputStreamWriter(new FileOutputStream(file + "-pub"), StandardCharsets.UTF_8);
-	        collectionOutput = new OutputStreamWriter(new FileOutputStream(file + "-col"), StandardCharsets.UTF_8);
-		} catch (FileNotFoundException e) {
-			System.err.println("File or Directory not found: " + e);
-			System.exit(2);
-			return;
-		}
+        try {
+            dblpInput = new FileInputStream(file);
+            publicationOutput = new OutputStreamWriter(new FileOutputStream(file + "-pub"), StandardCharsets.UTF_8);
+            collectionOutput = new OutputStreamWriter(new FileOutputStream(file + "-col"), StandardCharsets.UTF_8);
+        } catch (FileNotFoundException e) {
+            System.err.println("File or Directory not found: " + e);
+            System.exit(2);
+            return;
+        }
 
         try {
-			parse(dblpInput, publicationOutput, collectionOutput);
-		} catch (XMLStreamException | IOException e) {
-			System.err.println("Error while parsing dblp.xml: " + e);
-			System.exit(3);
-			return;
-		}
+            parse(dblpInput, publicationOutput, collectionOutput);
+        } catch (XMLStreamException | IOException e) {
+            System.err.println("Error while parsing dblp.xml: " + e);
+            System.exit(3);
+            return;
+        }
 
         System.exit(0);
     }
