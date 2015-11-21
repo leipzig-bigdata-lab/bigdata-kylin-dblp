@@ -47,7 +47,9 @@ public class Parser {
         validProperties.add("cite");
     }
 
-    public static void parse(InputStream dblpInput, Writer publicationOutput, Writer collectionOutput) throws XMLStreamException, IOException {
+    public static long parse(InputStream dblpInput, Writer publicationOutput, Writer collectionOutput) throws XMLStreamException, IOException {
+        long importedEntries = 0;
+
         // disable default entity resolution limit (64000)
         System.getProperties().setProperty("jdk.xml.entityExpansionLimit", "0");
 
@@ -97,12 +99,14 @@ public class Parser {
                         if(currentPublication.isComplete()) {
                             publicationOutput.append(currentPublication.toString());
                             publicationOutput.append('\n');
+                            importedEntries = progressBar(importedEntries);
                         }
                         currentPublication = null;
                     } else if(Collection.isValidType(endElement)) {
                         if(currentCollection.isComplete()) {
                             collectionOutput.append(currentCollection.toString());
                             collectionOutput.append('\n');
+                            importedEntries = progressBar(importedEntries);
                         }
                         currentCollection = null;
                     } else if(endElement.equals(currentProperty)) {
@@ -155,6 +159,20 @@ public class Parser {
                     break;
             }
         }
+
+        return importedEntries;
+    }
+
+    protected static long progressBar(long counter) {
+        if(counter % 200000 == 0) {
+            System.out.format("%n%,11d -", counter);
+            System.out.flush();
+        } else if(counter % 3125 == 0) {
+            System.out.print('-');
+            System.out.flush();
+        }
+
+        return counter + 1;
     }
 
     protected static boolean isValidProperty(String name) {
@@ -199,7 +217,9 @@ public class Parser {
 
             try(Writer publicationOutput = new BufferedWriter(new OutputStreamWriter(publicationFile, StandardCharsets.UTF_8));
                 Writer collectionOutput = new BufferedWriter(new OutputStreamWriter(collectionFile, StandardCharsets.UTF_8))) {
-                parse(dblpInput, publicationOutput, collectionOutput);
+                System.out.print("Starting import ...");
+                long importedEntries = parse(dblpInput, publicationOutput, collectionOutput);
+                System.out.format("%n... finished! Imported %,d entries.%n", importedEntries);
             }
         } catch(IOException | URISyntaxException e) {
             System.err.println("Error writing to hdfs: " + e);
