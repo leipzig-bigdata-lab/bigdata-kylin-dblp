@@ -51,7 +51,7 @@ public class Parser {
         // disable default entity resolution limit (64000)
         System.getProperties().setProperty("jdk.xml.entityExpansionLimit", "0");
 
-        XMLInputFactory factory = XMLInputFactory.newFactory();
+        XMLInputFactory factory = XMLInputFactory.newInstance();
         factory.setProperty(XMLInputFactory.IS_REPLACING_ENTITY_REFERENCES, true);
         factory.setXMLResolver(new XMLResolver() {
             @Override
