@@ -23,6 +23,10 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.log4j.ConsoleAppender;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
+import org.apache.log4j.PatternLayout;
 
 import bigdata.dblp.records.Collection;
 import bigdata.dblp.records.Publication;
@@ -163,6 +167,11 @@ public class Parser {
             System.exit(1);
             return;
         }
+
+        // init log4j to output to stderr
+        ConsoleAppender appender = new ConsoleAppender(new PatternLayout(PatternLayout.TTCC_CONVERSION_PATTERN), "System.err");
+        appender.setThreshold(Level.WARN);
+        Logger.getRootLogger().addAppender(appender);
 
         String file = args[0];
         Path hdfsPath = new Path(args[1]);
