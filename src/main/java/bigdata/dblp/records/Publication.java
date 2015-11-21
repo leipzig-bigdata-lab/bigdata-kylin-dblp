@@ -1,9 +1,12 @@
 package bigdata.dblp.records;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import org.apache.commons.csv.CSVPrinter;
 
 public class Publication {
     public String type;
@@ -59,6 +62,22 @@ public class Publication {
             ret.append(String.join(", ", cites));
         }
         return ret.toString();
+    }
+
+    static long sequenceNumber = 0;
+    public void toCsv(CSVPrinter printer) throws IOException {
+        printer.printRecord(++sequenceNumber, type, id, title, year, getVenue(), saveJoin(authors), saveJoin(cites));
+    }
+
+    private String saveJoin(Iterable<String> list) {
+        StringBuilder builder = new StringBuilder();
+        for(String string : list) {
+            if(builder.length() != 0) {
+                builder.append('|');
+            }
+            builder.append(string.replace('|', '-'));
+        }
+        return builder.toString();
     }
 
     public static boolean isValidType(String type) {

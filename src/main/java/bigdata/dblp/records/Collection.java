@@ -1,7 +1,10 @@
 package bigdata.dblp.records;
 
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
+
+import org.apache.commons.csv.CSVPrinter;
 
 public class Collection {
     public String type;
@@ -25,6 +28,11 @@ public class Collection {
         ret.append("): ");
         ret.append(title);
         return ret.toString();
+    }
+
+    static long sequenceNumber = 0;
+    public void toCsv(CSVPrinter collections) throws IOException {
+        collections.printRecord(++sequenceNumber, type, id, title);
     }
 
     public static boolean isValidType(String type) {
