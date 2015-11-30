@@ -47,9 +47,9 @@ Es konnten aufgrund von Beschränkungen von Kylin\footnote{\url{http://kylin.inc
 
 \subsection{Einrichtung}
 
-Die Hadoop-Umgebung wurde im pseudo-verteilten Modus installiert, d.\,h. es werden die gleichen Knoten wie in einer verteilten Umgebung verwendet, jedoch alle auf einer physischen Maschine und nur jeweils eines Instanz pro Knotentyp.
+Die Hadoop-Umgebung wurde im pseudo-verteilten Modus installiert, d.\,h. es werden die gleichen Knoten wie in einer verteilten Umgebung verwendet, jedoch alle auf einer physischen Maschine und nur jeweils eine Instanz pro Knotentyp.
 
-Die Installation erfolgte ohne root-Rechte in einem Benutzerverzeichnis durch Setzen der benötigten Umgebungsvariablen (\texttt{HADOOP\_HOME}, \texttt{HBASE\_HOME}, $\dots$). Dabei wurde weitgehend auf die Standard-Konfiguration gesetzt und nur die minimal benötigte Konfiguration vorgenommen.\footnote{Details dazu finden sich im Installationsprotokoll: \texttt{Installation.txt}}
+Die Installation erfolgte ohne root-Rechte in einem Benutzerverzeichnis durch Setzen der benötigten Umgebungsvariablen (\texttt{HADOOP\_HOME}, \texttt{HBASE\_HOME}, $\dots$). Dabei wurde weitgehend auf die Standard-Konfiguration gesetzt und nur die minimal benötigte Konfiguration vorgenommen.\footnote{Details dazu finden sich im Installationsprotokoll im privaten Repository: \texttt{Installation.txt}}
 
 Da die meisten Dienste standardmäßig an allen Adressen (und damit auch der öffentlichen Adresse) lauschen, wurde zusätzlich die in Ubuntu integrierte Firewall \texttt{ufw} aktiviert.
 
@@ -68,7 +68,7 @@ Das folgende vorläufige Datenbankschema basiert auf dem in der Aufgabenstellung
 
 \section{Datenimport}
 
-Der Import mit PDI gestaltete sich aufgrund der Datengröße schwierig. So kann die \texttt{dblp.xml} nicht direkt mit einem DOM-Parser verarbeitet werden, da dafür zu viel Speicher benötigt wird. Aus diesem Grund muss ein SAX- oder StaX-Parser verwendet werden, was in Pentaho selbst nur Umständlich umzusetzen ist.
+Der Import mit PDI gestaltete sich aufgrund der Datengröße schwierig. So kann die \texttt{dblp.xml} nicht direkt mit einem DOM-Parser verarbeitet werden, da dafür zu viel Speicher benötigt wird. Aus diesem Grund muss ein SAX- oder StaX-Parser verwendet werden, was in Pentaho selbst nur umständlich umzusetzen ist.
 
 Auch ein direkter Import per MapReduce stellte sich als schwierig heraus, da immer komplette XML-Records gelesen werden müssen, was der standardmäßig zeilenweisen Verarbeitung von MapReduce widerspricht. Hadoop besitzt zwar einen \texttt{StreamXmlRecordReader}, der jedoch selbst in aktuellen Versionen scheinbar nicht immer problemlos funktioniert\footnote{\url{https://issues.apache.org/jira/browse/MAPREDUCE-577}}.
 
