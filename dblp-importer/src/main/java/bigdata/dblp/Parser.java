@@ -205,6 +205,9 @@ public class Parser {
         appender.setThreshold(Level.WARN);
         Logger.getRootLogger().addAppender(appender);
 
+        // Used for remote development -- DO NOT COMMIT
+        System.setProperty("HADOOP_USER_NAME", "bigprak");
+
         String file = args[0];
         Path hdfsPath = new Path(args[1]);
 
