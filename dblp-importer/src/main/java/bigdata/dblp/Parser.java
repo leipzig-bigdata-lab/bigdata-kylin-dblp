@@ -106,6 +106,7 @@ public class Parser {
                         if(currentPublication.isComplete()) {
                             currentPublication.toCsv(publicationOutput);
                             importedEntries = progressBar(importedEntries);
+                            if(importedEntries > 1000) return importedEntries;
                         }
                         currentPublication = null;
                     } else if(Collection.isValidType(endElement)) {
