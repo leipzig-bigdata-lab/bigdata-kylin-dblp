@@ -62,7 +62,11 @@ public class Parser {
             @Override
             public Object resolveEntity(String publicID, String systemID, String baseURI, String namespace) throws XMLStreamException {
                 if(systemID.equals("dblp.dtd")) {
-                    return Parser.class.getResourceAsStream("resources/dblp.dtd");
+                    InputStream dtd = Parser.class.getResourceAsStream("/dblp.dtd");
+                    if(dtd == null) {
+                        throw new RuntimeException("dblp.dtd not found!");
+                    }
+                    return dtd;
                 }
                 return null;
             }
