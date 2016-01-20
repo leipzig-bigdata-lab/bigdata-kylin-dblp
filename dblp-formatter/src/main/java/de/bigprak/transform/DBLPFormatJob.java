@@ -22,8 +22,17 @@ import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.io.CsvReader;
 import org.apache.flink.api.common.functions.FlatMapFunction;
+import org.apache.flink.api.common.operators.Order;
+import org.apache.flink.api.java.tuple.Tuple;
+import org.apache.flink.api.java.tuple.Tuple1;
 import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.api.java.tuple.Tuple3;
+import org.apache.flink.core.fs.FileSystem.WriteMode;
 import org.apache.flink.util.Collector;
+import org.apache.hadoop.yarn.webapp.hamlet.HamletSpec.TITLE;
+
+import akka.io.Tcp.Write;
+import de.bigprak.transform.schema.Title;
 
 /**
  * Implements the "WordCount" program that computes a simple word occurrence histogram
@@ -43,40 +52,75 @@ public class DBLPFormatJob {
 	//
 	//	Program
 	//
-
+	private final static String LINE_DELIMITTER = "\n";
+	private final static String FIELD_DELIMITTER = "\\,";
+	
+	
 	public static void main(String[] args) throws Exception {
-
 		// set up the execution environment
 		final ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
-		CsvReader reader = env.readCsvFile("dblp-src/publications.csv");
-		reader.fieldDelimiter(",").lineDelimiter("\\n").pojoType(pojoType, pojoFields);
+		CsvReader publicationsReader = env.readCsvFile("dblp-src/publications.csv");
+		CsvReader collectionsReader = env.readCsvFile("dblp-src/collections.csv");
 		
-		// get input data
-	}
-
-	private void transformPublications(CsvReader csv) 
-	{
-		csv.lineDelimiter(delimiter)
-	}
-
-	/**
-	 * Implements the string tokenizer that splits sentences into words as a user-defined
-	 * FlatMapFunction. The function takes a line (String) and splits it into
-	 * multiple pairs in the form of "(word,1)" (Tuple2<String, Integer>).
-	 */
-	public static final class LineSplitter implements FlatMapFunction<String, Tuple2<String, Integer>> {
-
-		@Override
-		public void flatMap(String value, Collector<Tuple2<String, Integer>> out) {
-			// normalize and split the line
-			String[] tokens = value.toLowerCase().split("\\W+");
-
-			// emit the pairs
-			for (String token : tokens) {
-				if (token.length() > 0) {
-					out.collect(new Tuple2<String, Integer>(token, 1));
-				}
-			}
-		}
+		//transform dimensions
+		//titles
+		publicationsReader.fieldDelimiter(FIELD_DELIMITTER)
+			.lineDelimiter(LINE_DELIMITTER)
+			.includeFields(true, false, false, true)
+			.types(Integer.class, String.class)
+			.distinct(1)
+			.writeAsCsv("dblp-target/title.csv", LINE_DELIMITTER, FIELD_DELIMITTER, WriteMode.OVERWRITE)
+			.setParallelism(1)
+			.sortLocalOutput(0, Order.ASCENDING);
+		
+		//document types
+		DataSet<Tuple3<Integer, String, String>> documentTypeSetA = publicationsReader.fieldDelimiter(FIELD_DELIMITTER)
+			.lineDelimiter(LINE_DELIMITTER)
+			.includeFields(true, true)
+			.types(Integer.class, String.class, String.class)
+			.distinct(1);
+		
+		//authors
+		publicationsReader.fieldDelimiter(FIELD_DELIMITTER)
+			.lineDelimiter(LINE_DELIMITTER)
+			.includeFields(true, false, false, false, false, false, true)
+			.types(Integer.class, String.class, Integer.class)
+			.distinct(1)
+			.writeAsCsv("dblp-target/author.csv", LINE_DELIMITTER, FIELD_DELIMITTER, WriteMode.OVERWRITE)
+			.setParallelism(1)
+			.sortLocalOutput(0, Order.ASCENDING);
+		
+		//time
+		publicationsReader.fieldDelimiter(FIELD_DELIMITTER)
+			.lineDelimiter(LINE_DELIMITTER)
+			.includeFields(true, false, false, false, true)
+			.types(Integer.class, Integer.class, Integer.class, Integer.class, Integer.class)
+			.distinct(1)
+			.writeAsCsv("dblp-target/time.csv", LINE_DELIMITTER, FIELD_DELIMITTER, WriteMode.OVERWRITE)
+			.setParallelism(1)
+			.sortLocalOutput(0, Order.ASCENDING);
+		
+		//venue series
+		collectionsReader.fieldDelimiter(FIELD_DELIMITTER)
+			.lineDelimiter(LINE_DELIMITTER)
+			.includeFields(true, false, false, true)
+			.types(Integer.class, String.class, String.class)
+			.distinct(1)
+			.writeAsCsv("dblp-target/venue_series.csv", LINE_DELIMITTER, FIELD_DELIMITTER, WriteMode.OVERWRITE)
+			.setParallelism(1)
+			.sortLocalOutput(0, Order.ASCENDING);
+		
+		//extract document types from collections csv and append to document_type.csv
+		DataSet<Tuple3<Integer, String, String>> documentTypeSetB = collectionsReader.fieldDelimiter(FIELD_DELIMITTER)
+			.lineDelimiter(LINE_DELIMITTER)
+			.includeFields(true, true)
+			.types(Integer.class, String.class, String.class)
+			.distinct(1);
+		documentTypeSetA.union(documentTypeSetB)
+			.writeAsCsv("dblp-target/document_type.csv", LINE_DELIMITTER, FIELD_DELIMITTER, WriteMode.OVERWRITE)
+			.setParallelism(1)
+			.sortLocalOutput(0, Order.ASCENDING);
+		
+		env.execute();
 	}
 }
