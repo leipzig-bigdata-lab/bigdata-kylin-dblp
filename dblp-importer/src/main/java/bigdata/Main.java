@@ -55,6 +55,7 @@ public class Main {
 
         Namespace args = createArgsParser().parseArgsOrFail(rawArgs);
 
+        String command = args.getString("command");
         InputStream inputStream = args.get("input_file");
         Path hdfsPath = new Path(args.getString("output_folder"));
 
@@ -65,17 +66,29 @@ public class Main {
             FileSystem fs = FileSystem.get(new URI("hdfs://localhost"), conf);
             fs.mkdirs(hdfsPath);
 
-            FSDataOutputStream publicationStream = fs.create(new Path(hdfsPath, "dblp-publications.csv"));
-            FSDataOutputStream collectionStream = fs.create(new Path(hdfsPath, "dblp-collections.csv"));
+            if("dblp".equals(command)) {
+                FSDataOutputStream publicationStream = fs.create(new Path(hdfsPath, "dblp-publications.csv"));
+                FSDataOutputStream collectionStream = fs.create(new Path(hdfsPath, "dblp-collections.csv"));
 
-            Writer publicationWriter = new BufferedWriter(new OutputStreamWriter(publicationStream, StandardCharsets.UTF_8));
-            Writer collectionWriter = new BufferedWriter(new OutputStreamWriter(collectionStream, StandardCharsets.UTF_8));
+                Writer publicationWriter = new BufferedWriter(new OutputStreamWriter(publicationStream, StandardCharsets.UTF_8));
+                Writer collectionWriter = new BufferedWriter(new OutputStreamWriter(collectionStream, StandardCharsets.UTF_8));
 
-            try(CSVPrinter publicationCSVPrinter = new CSVPrinter(publicationWriter, createHiveCsvFormat());
-                CSVPrinter collectionCSVPrinter = new CSVPrinter(collectionWriter, createHiveCsvFormat())) {
-                System.out.print("Starting import ...");
-                long importedEntries = bigdata.dblp.Parser.parse(inputStream, publicationCSVPrinter, collectionCSVPrinter, new ProgressReporter());
-                System.out.format("%n... finished! Imported %,d entries.%n", importedEntries);
+                try(CSVPrinter publicationCSVPrinter = new CSVPrinter(publicationWriter, createHiveCsvFormat());
+                    CSVPrinter collectionCSVPrinter = new CSVPrinter(collectionWriter, createHiveCsvFormat())) {
+                    System.out.print("Starting import ...");
+                    long importedEntries = bigdata.dblp.Parser.parse(inputStream, publicationCSVPrinter, collectionCSVPrinter, new ProgressReporter());
+                    System.out.format("%n... finished! Imported %,d entries.%n", importedEntries);
+                }
+            } else if("acm".equals(command)) {
+                FSDataOutputStream publicationStream = fs.create(new Path(hdfsPath, "acm-publications.csv"));
+
+                Writer publicationWriter = new BufferedWriter(new OutputStreamWriter(publicationStream, StandardCharsets.UTF_8));
+
+                try(CSVPrinter publicationCSVPrinter = new CSVPrinter(publicationWriter, createHiveCsvFormat())) {
+                    System.out.print("Starting import ...");
+                    long importedEntries = bigdata.acm.Parser.parse(inputStream, publicationCSVPrinter, new ProgressReporter());
+                    System.out.format("%n... finished! Imported %,d entries.%n", importedEntries);
+                }
             }
         } catch(IOException | URISyntaxException e) {
             System.err.println("Error writing to hdfs: " + e);
@@ -109,6 +122,16 @@ public class Main {
                   .setDefault(System.in);
         dblpParser.addArgument("output_folder")
                   .help("destination folder in local hdfs");
+
+        Subparser acmParser = subparsers.addParser("acm");
+        acmParser.help("import ACM.xml into hdfs");
+        acmParser.addArgument("input_file")
+                 .help("input file, defaults to stdin")
+                 .nargs("?")
+                 .type(FileInputStream.class)
+                 .setDefault(System.in);
+        acmParser.addArgument("output_folder")
+                 .help("destination folder in local hdfs");
 
         return parser;
     }
