@@ -33,14 +33,6 @@ import net.sourceforge.argparse4j.inf.Subparser;
 import net.sourceforge.argparse4j.inf.Subparsers;
 
 public class Main {
-    public static CSVFormat createHiveCsvFormat() {
-        return CSVFormat.newFormat(',')
-                        .withRecordSeparator('\n')
-                        .withEscape('\\')
-                        .withQuoteMode(QuoteMode.NONE)
-                        .withNullString("");
-    }
-
     public static void main(String[] rawArgs) {
         // force english output in cli help messages
         Locale.setDefault(new Locale("en", "US"));
@@ -56,6 +48,7 @@ public class Main {
         Namespace args = createArgsParser().parseArgsOrFail(rawArgs);
 
         String command = args.getString("command");
+        CSVFormat format = createCsvFormat(args.getString("csv_format"));
         InputStream inputStream = args.get("input_file");
         Path hdfsPath = new Path(args.getString("output_folder"));
 
@@ -73,8 +66,8 @@ public class Main {
                 Writer publicationWriter = new BufferedWriter(new OutputStreamWriter(publicationStream, StandardCharsets.UTF_8));
                 Writer collectionWriter = new BufferedWriter(new OutputStreamWriter(collectionStream, StandardCharsets.UTF_8));
 
-                try(CSVPrinter publicationCSVPrinter = new CSVPrinter(publicationWriter, createHiveCsvFormat());
-                    CSVPrinter collectionCSVPrinter = new CSVPrinter(collectionWriter, createHiveCsvFormat())) {
+                try(CSVPrinter publicationCSVPrinter = new CSVPrinter(publicationWriter, format);
+                    CSVPrinter collectionCSVPrinter = new CSVPrinter(collectionWriter, format)) {
                     System.out.print("Starting import ...");
                     long importedEntries = bigdata.dblp.Parser.parse(inputStream, publicationCSVPrinter, collectionCSVPrinter, new ProgressReporter());
                     System.out.format("%n... finished! Imported %,d entries.%n", importedEntries);
@@ -84,7 +77,7 @@ public class Main {
 
                 Writer publicationWriter = new BufferedWriter(new OutputStreamWriter(publicationStream, StandardCharsets.UTF_8));
 
-                try(CSVPrinter publicationCSVPrinter = new CSVPrinter(publicationWriter, createHiveCsvFormat())) {
+                try(CSVPrinter publicationCSVPrinter = new CSVPrinter(publicationWriter, format)) {
                     System.out.print("Starting import ...");
                     long importedEntries = bigdata.acm.Parser.parse(inputStream, publicationCSVPrinter, new ProgressReporter());
                     System.out.format("%n... finished! Imported %,d entries.%n", importedEntries);
@@ -107,6 +100,11 @@ public class Main {
         ArgumentParser parser = ArgumentParsers.newArgumentParser("pub-importer");
         parser.version(Main.class.getPackage().getImplementationVersion());
         parser.addArgument("-V", "--version").action(Arguments.version());
+
+        parser.addArgument("--csv-format")
+              .help("formatting of the csv files, use escaped for hive")
+              .required(true)
+              .choices("quoted", "escaped");
 
         Subparsers subparsers = parser.addSubparsers()
             .dest("command")
@@ -134,5 +132,23 @@ public class Main {
                  .help("destination folder in local hdfs");
 
         return parser;
+    }
+
+    public static CSVFormat createCsvFormat(String mode) {
+        if("quoted".equals(mode)) {
+            return CSVFormat.newFormat(',')
+                            .withRecordSeparator('\n')
+                            .withQuote('"')
+                            .withQuoteMode(QuoteMode.MINIMAL)
+                            .withNullString("");
+        } else if("escaped".equals(mode)) {
+            return CSVFormat.newFormat(',')
+                            .withRecordSeparator('\n')
+                            .withEscape('\\')
+                            .withQuoteMode(QuoteMode.NONE)
+                            .withNullString("");
+        } else {
+            throw new IllegalArgumentException("invalid csv mode: " + mode);
+        }
     }
 }
