@@ -22,22 +22,32 @@ import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.io.CsvReader;
 import org.apache.flink.api.java.operators.DataSink;
+
+import java.util.Arrays;
+import java.util.List;
+
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.operators.Order;
 import org.apache.flink.api.java.tuple.Tuple;
 import org.apache.flink.api.java.tuple.Tuple1;
+import org.apache.flink.api.java.tuple.Tuple10;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.api.java.tuple.Tuple5;
 import org.apache.flink.api.java.tuple.Tuple6;
+import org.apache.flink.api.java.tuple.Tuple9;
 import org.apache.flink.api.java.utils.DataSetUtils;
 import org.apache.flink.core.fs.FileSystem.WriteMode;
 import org.apache.flink.util.Collector;
 import org.apache.hadoop.yarn.webapp.hamlet.HamletSpec.TITLE;
 
+import com.google.inject.util.Types;
+
 import akka.io.Tcp.Write;
+import de.bigprak.transform.schema.Publication;
 import de.bigprak.transform.schema.Title;
 import scala.collection.parallel.ParIterableLike.FlatMap;
+import scala.math.Numeric.FloatAsIfIntegral;
 
 /**
  * Implements the "WordCount" program that computes a simple word occurrence histogram
@@ -71,57 +81,61 @@ public class DBLPFormatJob {
 				.fieldDelimiter(FIELD_DELIMITTER)
 				.lineDelimiter(LINE_DELIMITTER);
 		
-		//transform dimensions
+		
 		//titles
 		DataSet<Tuple2<Long, String>> titles = publicationsReader
 			.includeFields(true, false, false, true)
-			.types(Long.class, String.class)
-			.distinct(1);
+			.types(Long.class, String.class);
 		
 		//document types
 		DataSet<Tuple3<Long, String, String>> documentTypeSetA = publicationsReader
 			.includeFields(true, true)
-			.types(Long.class, String.class, String.class)
-			.distinct(1);
+			.types(Long.class, String.class, String.class);
 		
 		//authors
 		DataSet<Tuple3<Long, String, Long>> authors = publicationsReader
 			.includeFields(true, false, false, false, false, false, true)
 			.types(Long.class, String.class, Long.class)
-			.distinct(1);
+			.flatMap(new AuthorSplitter());
 		
 		//time
 		DataSet<Tuple5<Long, Long, Long, Long, Long>> times = publicationsReader
 			.includeFields(true, false, false, false, true)
 			.types(Long.class, Long.class, Long.class, Long.class, Long.class)
-			.distinct(1)
 			.flatMap(new DecadecCalculator());
 		
 		//venue series
 		DataSet<Tuple3<Long, String, String>> venueSeries = collectionsReader
 			.includeFields(true, false, false, true)
-			.types(Long.class, String.class, String.class)
-			.distinct(1);
+			.types(Long.class, String.class, String.class);
 		
 		//extract document types from collections csv and append to document_type.csv
 		DataSet<Tuple3<Long, String, String>> documentTypeSetB = collectionsReader
 			.includeFields(true, true)
-			.types(Long.class, String.class, String.class)
-			.distinct(1);
+			.types(Long.class, String.class, String.class);
+		
+		DataSet<Tuple10<Long, String, Long, Long, Long, Long, Long, Long, Long, Long>> publications = publicationsReader
+				.includeFields(true, false, true)
+				.types(Long.class, String.class, Long.class, Long.class, Long.class, Long.class, Long.class, Long.class, Long.class, Long.class);
+		
 		
 		saveDataSetAsCsv("dblp-target/title.csv", titles);
 		saveDataSetAsCsv("dblp-target/time.csv", times);
 		saveDataSetAsCsv("dblp-target/venue_series.csv", venueSeries);
 		saveDataSetAsCsv("dblp-target/author.csv", authors);
 		saveDataSetAsCsv("dblp-target/document_type.csv", documentTypeSetA.union(documentTypeSetB));
+		saveDataSetAsCsv("dblp-target/publication.csv", publications);
 		
 		env.execute();
 	}
 	
-	private static <T extends Tuple> DataSink<?> saveDataSetAsCsv(String path, DataSet<T> dataSet)
+	private static <T extends Tuple> DataSink<?> saveDataSetAsCsv(String path, DataSet<T> dataSet, int... indicesForDistinction)
 	{
-		return DataSetUtils.zipWithUniqueId(dataSet)
-			.flatMap(new IdGenerator<T>())
+		return 
+			dataSet
+			.distinct(indicesForDistinction)
+			//DataSetUtils.zipWithUniqueId(dataSet)
+			//.flatMap(new IdGenerator<T>())
 			.writeAsCsv(path, LINE_DELIMITTER, FIELD_DELIMITTER, WriteMode.OVERWRITE)
 			.setParallelism(1) //save output as 1 file
 			.sortLocalOutput(0, Order.ASCENDING);
@@ -162,6 +176,24 @@ public class DBLPFormatJob {
 			if(value.f4 == null)
 				System.out.println(year + " " + decade);
 			out.collect(value);
+		}
+	}
+	
+	public static final class AuthorSplitter implements FlatMapFunction<Tuple3<Long, String, Long>, Tuple3<Long, String, Long>>
+	{
+		/**
+		 * 
+		 */
+		private static final long serialVersionUID = -8385594382353591175L;
+
+		@Override
+		public void flatMap(Tuple3<Long, String, Long> value, Collector<Tuple3<Long, String, Long>> out)
+				throws Exception {
+			List<String> authors = Arrays.asList(value.f1.split("[|]"));
+			for(String author : authors)
+			{
+				out.collect(new Tuple3<Long, String, Long>(value.f0, author, value.f2));
+			}
 		}
 	}
 }
