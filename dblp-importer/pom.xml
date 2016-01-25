@@ -26,7 +26,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>bigdata.dblp.Parser</mainClass>
+                            <mainClass>bigdata.Main</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>
