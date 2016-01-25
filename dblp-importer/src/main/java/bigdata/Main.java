@@ -2,7 +2,6 @@ package bigdata;
 
 import java.io.BufferedWriter;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
@@ -10,6 +9,7 @@ import java.io.Writer;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 
 import javax.xml.stream.XMLStreamException;
 
@@ -25,6 +25,13 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PatternLayout;
 
+import net.sourceforge.argparse4j.ArgumentParsers;
+import net.sourceforge.argparse4j.impl.Arguments;
+import net.sourceforge.argparse4j.inf.ArgumentParser;
+import net.sourceforge.argparse4j.inf.Namespace;
+import net.sourceforge.argparse4j.inf.Subparser;
+import net.sourceforge.argparse4j.inf.Subparsers;
+
 public class Main {
     public static CSVFormat createHiveCsvFormat() {
         return CSVFormat.newFormat(',')
@@ -34,12 +41,9 @@ public class Main {
                         .withNullString("");
     }
 
-    public static void main(String[] args) {
-        if(args.length < 2) {
-            System.err.println("Usage: dblp-importer /local/dblp.xml|stdin /path/in/hdfs");
-            System.exit(1);
-            return;
-        }
+    public static void main(String[] rawArgs) {
+        // force english output in cli help messages
+        Locale.setDefault(new Locale("en", "US"));
 
         // for local debugging only
         //System.setProperty("HADOOP_USER_NAME", "bigprak");
@@ -49,21 +53,10 @@ public class Main {
         appender.setThreshold(Level.WARN);
         Logger.getRootLogger().addAppender(appender);
 
-        String file = args[0];
-        Path hdfsPath = new Path(args[1]);
+        Namespace args = createArgsParser().parseArgsOrFail(rawArgs);
 
-        InputStream dblpInput;
-        try {
-            if("stdin".equals(file)) {
-                dblpInput = System.in;
-            } else {
-                dblpInput = new FileInputStream(file);
-            }
-        } catch(FileNotFoundException e) {
-            System.err.println("Input file not found: " + e);
-            System.exit(2);
-            return;
-        }
+        InputStream inputStream = args.get("input_file");
+        Path hdfsPath = new Path(args.getString("output_folder"));
 
         try {
             Configuration conf = new Configuration();
@@ -81,7 +74,7 @@ public class Main {
             try(CSVPrinter publicationCSVPrinter = new CSVPrinter(publicationWriter, createHiveCsvFormat());
                 CSVPrinter collectionCSVPrinter = new CSVPrinter(collectionWriter, createHiveCsvFormat())) {
                 System.out.print("Starting import ...");
-                long importedEntries = bigdata.dblp.Parser.parse(dblpInput, publicationCSVPrinter, collectionCSVPrinter, new ProgressReporter());
+                long importedEntries = bigdata.dblp.Parser.parse(inputStream, publicationCSVPrinter, collectionCSVPrinter, new ProgressReporter());
                 System.out.format("%n... finished! Imported %,d entries.%n", importedEntries);
             }
         } catch(IOException | URISyntaxException e) {
@@ -95,5 +88,28 @@ public class Main {
         }
 
         System.exit(0);
+    }
+
+    protected static ArgumentParser createArgsParser() {
+        ArgumentParser parser = ArgumentParsers.newArgumentParser("pub-importer");
+        parser.version(Main.class.getPackage().getImplementationVersion());
+        parser.addArgument("-V", "--version").action(Arguments.version());
+
+        Subparsers subparsers = parser.addSubparsers()
+            .dest("command")
+            .title("subcommands")
+            .metavar("COMMAND");
+
+        Subparser dblpParser = subparsers.addParser("dblp");
+        dblpParser.help("import original dblp.xml into hdfs");
+        dblpParser.addArgument("input_file")
+                  .help("input file, defaults to stdin")
+                  .nargs("?")
+                  .type(FileInputStream.class)
+                  .setDefault(System.in);
+        dblpParser.addArgument("output_folder")
+                  .help("destination folder in local hdfs");
+
+        return parser;
     }
 }
