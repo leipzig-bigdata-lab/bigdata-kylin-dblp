@@ -3,6 +3,7 @@ package de.bigprak.transform;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import org.apache.flink.api.common.functions.CoGroupFunction;
 import org.apache.flink.api.common.functions.FlatMapFunction;
@@ -37,6 +38,7 @@ import org.apache.flink.api.java.tuple.Tuple5;
 import org.apache.flink.api.java.tuple.Tuple7;
 import org.apache.flink.api.java.tuple.Tuple9;
 import org.apache.flink.api.java.utils.DataSetUtils;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.fs.FileSystem.WriteMode;
 import org.apache.flink.util.Collector;
 
@@ -60,18 +62,28 @@ public class DBLPFormatJob {
 	//
 	private final static String LINE_DELIMITTER = "\n";
 	private final static String FIELD_DELIMITTER = "\\,";
+//	private final static char QUOTE_CHAR = '"';
 	
 	
+	@SuppressWarnings("unchecked")
 	public static void main(String[] args) throws Exception {
 		// set up the execution environment
 		final ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
 		CsvReader publicationsReader = env.readCsvFile("dblp-src/publications.csv")
 				.fieldDelimiter(FIELD_DELIMITTER)
 				.lineDelimiter(LINE_DELIMITTER);
+//				.parseQuotedStrings(QUOTE_CHAR);
 		CsvReader collectionsReader = env.readCsvFile("dblp-src/collections.csv")
 				.fieldDelimiter(FIELD_DELIMITTER)
 				.lineDelimiter(LINE_DELIMITTER);
+//				.parseQuotedStrings(QUOTE_CHAR);
 		
+		DataSet<Tuple2<Long, String>> cites = publicationsReader
+				.ignoreInvalidLines()
+				.includeFields(true, false, false, false, false, false, false, true)
+				.types(Long.class, String.class)
+				.flatMap(new Splitter<Tuple2<Long, String>>(1))
+				.flatMap(new KeyCleaner<Tuple2<Long, String>>(1));
 		
 		//titles
 		DataSet<Tuple3<Long, String, String>> titles = generateUniqueIds(publicationsReader
@@ -101,7 +113,7 @@ public class DBLPFormatJob {
 			.includeFields(true, false, true, true)
 			.types(Long.class, String.class, String.class))
 			.project(0,2,1);
-		venueSeries = venueSeries.flatMap(new KeyCleaner()); //remove ref: from venueseries key
+//		venueSeries = venueSeries.flatMap(new KeyCleaner()); //remove ref: from venueseries key
 		
 		//extract document types from collections csv and append to document_type.csv
 		DataSet<Tuple3<Long, String, String>> documentTypeSetB = collectionsReader
@@ -117,7 +129,8 @@ public class DBLPFormatJob {
 		
 		DataSet<Tuple7<Long, String, String, String, Long, String, String>> pubs = publicationsReader
 				.includeFields(true, true, true, true, true, true, true)
-				.types(Long.class, String.class, String.class, String.class, Long.class, String.class, String.class);
+				.types(Long.class, String.class, String.class, String.class, Long.class, String.class, String.class)
+				.flatMap(new KeyCleaner<Tuple7<Long, String, String, String, Long, String, String>>(5));
 		
 		
 		DataSet<Tuple2<Long, Long>> timeJoin = pubs.coGroup(times).where(4).equalTo(1).with(new Join());
@@ -125,6 +138,7 @@ public class DBLPFormatJob {
 		DataSet<Tuple2<Long, Long>> documentTypeJoin = pubs.coGroup(documentTypes).where(1).equalTo(1).with(new Join());
 		DataSet<Tuple2<Long, Long>> venueSeriesJoin = pubs.coGroup(venueSeries).where(5).equalTo(2).with(new Join());
 		DataSet<Tuple2<Long, Long>> authorJoin = pubs.flatMap(new Splitter<Tuple7<Long, String, String, String, Long, String, String>>(6)).coGroup(authors).where(6).equalTo(1).with(new Join());
+		DataSet<Tuple2<Long, Long>> citeJoin = pubs.coGroup(cites).where(2).equalTo(1).with(new Join());
 		
 		DataSet<Tuple9<Long, Long, Long, Long, Long, Long, Long, Long, Long>> publications = publicationsReader
 				.includeFields(true)
@@ -135,6 +149,7 @@ public class DBLPFormatJob {
 		publications = publications.coGroup(venueSeriesJoin).where(0).equalTo(0).with(new PublicationMerge(4));
 		publications = publications.coGroup(documentTypeJoin).where(0).equalTo(0).with(new PublicationMerge(2));
 		
+		saveDataSetAsCsv("dblp-target/cite.csv", citeJoin, 0);
 		saveDataSetAsCsv("dblp-target/title.csv", titles, 0);
 		saveDataSetAsCsv("dblp-target/time.csv", times, 0);
 		saveDataSetAsCsv("dblp-target/venue_series.csv", venueSeries, 0);
@@ -179,7 +194,12 @@ public class DBLPFormatJob {
 				Iterable<Tuple2<Long, Long>> second,
 				Collector<Tuple9<Long, Long, Long, Long, Long, Long, Long, Long, Long>> out) throws Exception {
 			Tuple9<Long, Long, Long, Long, Long, Long, Long, Long, Long> result = first.iterator().next();
-			Tuple2<Long, Long> map = second.iterator().next();
+			Tuple2<Long, Long> map = new Tuple2<>();
+			try {
+				map = second.iterator().next();
+			} catch(NoSuchElementException e) {
+				e.printStackTrace();
+			}
 			
 			result.setField(map.f1, index);
 			out.collect(result);
@@ -278,7 +298,7 @@ public class DBLPFormatJob {
 		}
 	}
 	
-	public static final class KeyCleaner implements FlatMapFunction<Tuple3<Long, String, String>, Tuple3<Long, String, String>>
+	public static final class KeyCleaner<T extends Tuple> implements FlatMapFunction<T, T>
 	{
 
 		/**
@@ -286,12 +306,23 @@ public class DBLPFormatJob {
 		 */
 		private static final long serialVersionUID = 310145510485555611L;
 
+		private int index;
+		
+		public KeyCleaner(int index) {
+			this.index = index;
+		}
+		
 		@Override
-		public void flatMap(Tuple3<Long, String, String> value, Collector<Tuple3<Long, String, String>> out)
+		public void flatMap(T value, Collector<T> out)
 				throws Exception {
-			//add "ref:"
-			if(!value.f2.contains("ref:"))
-				value = new Tuple3<Long, String, String>(value.f0, value.f1, "ref:" + value.f2);
+			//remove "ref:"
+			String cleanedString;
+			if(value.getField(index).toString().contains("ref:"))
+			{
+				cleanedString = value.getField(index).toString().substring(4);
+				value.setField(cleanedString, index);
+			}
+				
 			out.collect(value);
 		}
 		
