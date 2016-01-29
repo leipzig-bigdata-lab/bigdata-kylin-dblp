@@ -1,5 +1,13 @@
 package de.bigprak.transform;
 
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
+
+import org.apache.flink.api.common.functions.CoGroupFunction;
+import org.apache.flink.api.common.functions.FlatMapFunction;
+import org.apache.flink.api.common.operators.Order;
+
 /**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -22,38 +30,15 @@ import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.io.CsvReader;
 import org.apache.flink.api.java.operators.DataSink;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
-
-import org.apache.flink.api.common.functions.CoGroupFunction;
-import org.apache.flink.api.common.functions.FlatMapFunction;
-import org.apache.flink.api.common.operators.Order;
-import org.apache.flink.api.common.operators.base.JoinOperatorBase.JoinHint;
 import org.apache.flink.api.java.tuple.Tuple;
-import org.apache.flink.api.java.tuple.Tuple1;
-import org.apache.flink.api.java.tuple.Tuple10;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.api.java.tuple.Tuple5;
-import org.apache.flink.api.java.tuple.Tuple6;
 import org.apache.flink.api.java.tuple.Tuple7;
-import org.apache.flink.api.java.tuple.Tuple8;
 import org.apache.flink.api.java.tuple.Tuple9;
 import org.apache.flink.api.java.utils.DataSetUtils;
 import org.apache.flink.core.fs.FileSystem.WriteMode;
 import org.apache.flink.util.Collector;
-import org.apache.hadoop.yarn.webapp.hamlet.HamletSpec.TITLE;
-
-import com.google.inject.util.Types;
-
-import akka.io.Tcp.Write;
-import de.bigprak.transform.schema.Publication;
-import de.bigprak.transform.schema.Title;
-import scala.collection.parallel.ParIterableLike.FlatMap;
-import scala.math.Numeric.FloatAsIfIntegral;
 
 /**
  * Implements the "WordCount" program that computes a simple word occurrence histogram
@@ -137,21 +122,26 @@ public class DBLPFormatJob {
 		
 		DataSet<Tuple2<Long, Long>> timeJoin = pubs.coGroup(times).where(4).equalTo(1).with(new Join());
 		DataSet<Tuple2<Long, Long>> titleJoin = pubs.coGroup(titles).where(2).equalTo(2).with(new Join());
-		DataSet<Tuple2<Long, Long>> documentTypeJoin = pubs.coGroup(documentTypes).where(2).equalTo(1).with(new Join());
+		DataSet<Tuple2<Long, Long>> documentTypeJoin = pubs.coGroup(documentTypes).where(1).equalTo(1).with(new Join());
 		DataSet<Tuple2<Long, Long>> venueSeriesJoin = pubs.coGroup(venueSeries).where(5).equalTo(2).with(new Join());
 		DataSet<Tuple2<Long, Long>> authorJoin = pubs.flatMap(new Splitter<Tuple7<Long, String, String, String, Long, String, String>>(6)).coGroup(authors).where(6).equalTo(1).with(new Join());
 		
-//		DataSet<Tuple10<Long, String, Long, Long, Long, Long, Long, Long, Long, Long>> publications = publicationsReader
-//				.includeFields(true, false, true)
-//				.types(Long.class, String.class, Long.class, Long.class, Long.class, Long.class, Long.class, Long.class, Long.class, Long.class);
+		DataSet<Tuple9<Long, Long, Long, Long, Long, Long, Long, Long, Long>> publications = publicationsReader
+				.includeFields(true)
+				.types(Long.class, Long.class, Long.class, Long.class, Long.class, Long.class, Long.class, Long.class, Long.class);
 		
-		saveDataSetAsCsv("dblp-target/title.csv", titles);
-		saveDataSetAsCsv("dblp-target/time.csv", times);
-		saveDataSetAsCsv("dblp-target/venue_series.csv", venueSeries);
-		saveDataSetAsCsv("dblp-target/author.csv", authors);
-		saveDataSetAsCsv("dblp-target/document_type.csv", documentTypes);
-		saveDataSetAsCsv("dblp-target/author_publication_map.csv", authorJoin);
-//		saveDataSetAsCsv("dblp-target/publication.csv", publications);
+		publications = publications.coGroup(timeJoin).where(0).equalTo(0).with(new PublicationMerge(3));
+		publications = publications.coGroup(titleJoin).where(0).equalTo(0).with(new PublicationMerge(1));
+		publications = publications.coGroup(venueSeriesJoin).where(0).equalTo(0).with(new PublicationMerge(4));
+		publications = publications.coGroup(documentTypeJoin).where(0).equalTo(0).with(new PublicationMerge(2));
+		
+		saveDataSetAsCsv("dblp-target/title.csv", titles, 0);
+		saveDataSetAsCsv("dblp-target/time.csv", times, 0);
+		saveDataSetAsCsv("dblp-target/venue_series.csv", venueSeries, 0);
+		saveDataSetAsCsv("dblp-target/author.csv", authors, 0);
+		saveDataSetAsCsv("dblp-target/document_type.csv", documentTypes, 0);
+		saveDataSetAsCsv("dblp-target/author_publication_map.csv", authorJoin, 0);
+		saveDataSetAsCsv("dblp-target/publication.csv", publications,0);
 		
 		env.execute();
 	}
@@ -162,14 +152,38 @@ public class DBLPFormatJob {
 				.flatMap(new IdExtractor<T>());
 	}
 	
-	private static <T extends Tuple> DataSink<?> saveDataSetAsCsv(String path, DataSet<T> dataSet, int... indicesForDistinction)
+	private static <T extends Tuple> DataSink<?> saveDataSetAsCsv(String path, DataSet<T> dataSet, int sortIndex)
 	{
 		return 
 			dataSet
-			.distinct(indicesForDistinction)
 			.writeAsCsv(path, LINE_DELIMITTER, FIELD_DELIMITTER, WriteMode.OVERWRITE)
 			.setParallelism(1) //save output as 1 file
-			.sortLocalOutput(1, Order.ASCENDING);
+			.sortLocalOutput(sortIndex, Order.ASCENDING);
+	}
+	
+	public static final class PublicationMerge implements CoGroupFunction<Tuple9<Long, Long, Long, Long, Long, Long, Long, Long, Long>, Tuple2<Long, Long>, Tuple9<Long, Long, Long, Long, Long, Long, Long, Long, Long>>
+	{
+		/**
+		 * 
+		 */
+		private static final long serialVersionUID = 3869927264362843210L;
+		
+		private int index;
+		
+		public PublicationMerge(int index) {
+			this.index = index;
+		}
+		
+		@Override
+		public void coGroup(Iterable<Tuple9<Long, Long, Long, Long, Long, Long, Long, Long, Long>> first,
+				Iterable<Tuple2<Long, Long>> second,
+				Collector<Tuple9<Long, Long, Long, Long, Long, Long, Long, Long, Long>> out) throws Exception {
+			Tuple9<Long, Long, Long, Long, Long, Long, Long, Long, Long> result = first.iterator().next();
+			Tuple2<Long, Long> map = second.iterator().next();
+			
+			result.setField(map.f1, index);
+			out.collect(result);
+		}
 	}
 	
 	public static final class Join<T0 extends Tuple, T1 extends Tuple> implements CoGroupFunction<T0, T1, Tuple2<Long,Long>> {
