@@ -1,10 +1,13 @@
 package bigdata;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.io.Reader;
 import java.io.Writer;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -14,9 +17,12 @@ import java.util.Locale;
 import javax.xml.stream.XMLStreamException;
 
 import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.csv.QuoteMode;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -28,6 +34,7 @@ import org.apache.log4j.PatternLayout;
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.impl.Arguments;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
+import net.sourceforge.argparse4j.inf.MutuallyExclusiveGroup;
 import net.sourceforge.argparse4j.inf.Namespace;
 import net.sourceforge.argparse4j.inf.Subparser;
 import net.sourceforge.argparse4j.inf.Subparsers;
@@ -84,6 +91,42 @@ public class Main {
                         System.out.format("%n... finished! Imported %,d entries.%n", importedEntries);
                     }
                 }
+            } else if("csv".equals(command)) {
+                Path hdfsInput = new Path(args.getString("input_file"));
+                Path hdfsOutput = new Path(args.getString("output_file"));
+                long limit = args.getLong("limit");
+
+                FSDataInputStream inputStream = fs.open(hdfsInput);
+                FSDataOutputStream outputStream = fs.create(hdfsOutput);
+
+                CSVFormat inputFormat = null, outputFormat = null;
+                if(args.getBoolean("quoted_to_escaped")) {
+                    inputFormat = createCsvFormat("quoted");
+                    outputFormat = createCsvFormat("escaped");
+                } else if(args.getBoolean("escaped_to_quoted")) {
+                    inputFormat = createCsvFormat("escaped");
+                    outputFormat = createCsvFormat("quoted");
+                }
+
+                Reader inputReader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+                Writer outputWriter = new BufferedWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8));
+
+                try(CSVParser parser = new CSVParser(inputReader, inputFormat);
+                    CSVPrinter printer = new CSVPrinter(outputWriter, outputFormat)) {
+                    long i = 0;
+                    ProgressReporter progress = new ProgressReporter();
+
+                    System.out.print("Starting conversion ...");
+                    for(CSVRecord record : parser) {
+                        printer.printRecord(record);
+
+                        progress.report(i++);
+                        if(limit > 0 && limit <= i) {
+                            break;
+                        }
+                    }
+                    System.out.format("%n... finished! Converted %,d lines.%n", i);
+                }
             }
         } catch(IOException | URISyntaxException e) {
             System.err.println("Error writing to hdfs: " + e);
@@ -135,6 +178,26 @@ public class Main {
                  .help("formatting of the csv files, use escaped for hive")
                  .required(true)
                  .choices("quoted", "escaped");
+
+        Subparser csvParser = subparsers.addParser("csv");
+        csvParser.help("convert csv files between differernt formats");
+        csvParser.addArgument("input_file")
+                 .help("input file in local hdfs");
+        csvParser.addArgument("output_file")
+                 .help("output file in local hdfs");
+        MutuallyExclusiveGroup conversionArguments = csvParser.addMutuallyExclusiveGroup();
+        conversionArguments.required(true);
+        conversionArguments.addArgument("--quoted-to-escaped")
+                           .help("convert from quoted csv to escaped csv (hive)")
+                           .action(Arguments.storeTrue());
+        conversionArguments.addArgument("--escaped-to-quoted")
+                           .help("convert from escaped csv (hive) to quoted csv")
+                           .action(Arguments.storeTrue());
+        csvParser.addArgument("--limit")
+                 .metavar("N")
+                 .help("only convert and copy the first N entries")
+                 .type(Long.class)
+                 .setDefault(new Long(0));
 
         return parser;
     }
