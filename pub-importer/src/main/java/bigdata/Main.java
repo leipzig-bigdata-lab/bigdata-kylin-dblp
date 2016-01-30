@@ -46,41 +46,43 @@ public class Main {
         Logger.getRootLogger().addAppender(appender);
 
         Namespace args = createArgsParser().parseArgsOrFail(rawArgs);
-
         String command = args.getString("command");
-        CSVFormat format = createCsvFormat(args.getString("csv_format"));
-        InputStream inputStream = args.get("input_file");
-        Path hdfsPath = new Path(args.getString("output_folder"));
 
         try {
             Configuration conf = new Configuration();
             conf.set("fs.hdfs.impl", org.apache.hadoop.hdfs.DistributedFileSystem.class.getName());
             conf.set("fs.file.impl", org.apache.hadoop.fs.LocalFileSystem.class.getName());
             FileSystem fs = FileSystem.get(new URI("hdfs://localhost"), conf);
-            fs.mkdirs(hdfsPath);
 
-            if("dblp".equals(command)) {
-                FSDataOutputStream publicationStream = fs.create(new Path(hdfsPath, "dblp-publications.csv"));
-                FSDataOutputStream collectionStream = fs.create(new Path(hdfsPath, "dblp-collections.csv"));
+            if("dblp".equals(command) || "acm".equals(command)) {
+                CSVFormat format = createCsvFormat(args.getString("csv_format"));
+                InputStream inputStream = args.get("input_file");
+                Path hdfsPath = new Path(args.getString("output_folder"));
+                fs.mkdirs(hdfsPath);
 
-                Writer publicationWriter = new BufferedWriter(new OutputStreamWriter(publicationStream, StandardCharsets.UTF_8));
-                Writer collectionWriter = new BufferedWriter(new OutputStreamWriter(collectionStream, StandardCharsets.UTF_8));
+                if("dblp".equals(command)) {
+                    FSDataOutputStream publicationStream = fs.create(new Path(hdfsPath, "dblp-publications.csv"));
+                    FSDataOutputStream collectionStream = fs.create(new Path(hdfsPath, "dblp-collections.csv"));
 
-                try(CSVPrinter publicationCSVPrinter = new CSVPrinter(publicationWriter, format);
-                    CSVPrinter collectionCSVPrinter = new CSVPrinter(collectionWriter, format)) {
-                    System.out.print("Starting import ...");
-                    long importedEntries = bigdata.dblp.Parser.parse(inputStream, publicationCSVPrinter, collectionCSVPrinter, new ProgressReporter());
-                    System.out.format("%n... finished! Imported %,d entries.%n", importedEntries);
-                }
-            } else if("acm".equals(command)) {
-                FSDataOutputStream publicationStream = fs.create(new Path(hdfsPath, "acm-publications.csv"));
+                    Writer publicationWriter = new BufferedWriter(new OutputStreamWriter(publicationStream, StandardCharsets.UTF_8));
+                    Writer collectionWriter = new BufferedWriter(new OutputStreamWriter(collectionStream, StandardCharsets.UTF_8));
 
-                Writer publicationWriter = new BufferedWriter(new OutputStreamWriter(publicationStream, StandardCharsets.UTF_8));
+                    try(CSVPrinter publicationCSVPrinter = new CSVPrinter(publicationWriter, format);
+                        CSVPrinter collectionCSVPrinter = new CSVPrinter(collectionWriter, format)) {
+                        System.out.print("Starting import ...");
+                        long importedEntries = bigdata.dblp.Parser.parse(inputStream, publicationCSVPrinter, collectionCSVPrinter, new ProgressReporter());
+                        System.out.format("%n... finished! Imported %,d entries.%n", importedEntries);
+                    }
+                } else { // acm
+                    FSDataOutputStream publicationStream = fs.create(new Path(hdfsPath, "acm-publications.csv"));
 
-                try(CSVPrinter publicationCSVPrinter = new CSVPrinter(publicationWriter, format)) {
-                    System.out.print("Starting import ...");
-                    long importedEntries = bigdata.acm.Parser.parse(inputStream, publicationCSVPrinter, new ProgressReporter());
-                    System.out.format("%n... finished! Imported %,d entries.%n", importedEntries);
+                    Writer publicationWriter = new BufferedWriter(new OutputStreamWriter(publicationStream, StandardCharsets.UTF_8));
+
+                    try(CSVPrinter publicationCSVPrinter = new CSVPrinter(publicationWriter, format)) {
+                        System.out.print("Starting import ...");
+                        long importedEntries = bigdata.acm.Parser.parse(inputStream, publicationCSVPrinter, new ProgressReporter());
+                        System.out.format("%n... finished! Imported %,d entries.%n", importedEntries);
+                    }
                 }
             }
         } catch(IOException | URISyntaxException e) {
@@ -101,11 +103,6 @@ public class Main {
         parser.version(Main.class.getPackage().getImplementationVersion());
         parser.addArgument("-V", "--version").action(Arguments.version());
 
-        parser.addArgument("--csv-format")
-              .help("formatting of the csv files, use escaped for hive")
-              .required(true)
-              .choices("quoted", "escaped");
-
         Subparsers subparsers = parser.addSubparsers()
             .dest("command")
             .title("subcommands")
@@ -120,6 +117,10 @@ public class Main {
                   .setDefault(System.in);
         dblpParser.addArgument("output_folder")
                   .help("destination folder in local hdfs");
+        dblpParser.addArgument("--csv-format")
+                  .help("formatting of the csv files, use escaped for hive")
+                  .required(true)
+                  .choices("quoted", "escaped");
 
         Subparser acmParser = subparsers.addParser("acm");
         acmParser.help("import ACM.xml into hdfs");
@@ -130,6 +131,10 @@ public class Main {
                  .setDefault(System.in);
         acmParser.addArgument("output_folder")
                  .help("destination folder in local hdfs");
+        acmParser.addArgument("--csv-format")
+                 .help("formatting of the csv files, use escaped for hive")
+                 .required(true)
+                 .choices("quoted", "escaped");
 
         return parser;
     }
