@@ -38,9 +38,17 @@ import org.apache.flink.api.java.tuple.Tuple5;
 import org.apache.flink.api.java.tuple.Tuple7;
 import org.apache.flink.api.java.tuple.Tuple9;
 import org.apache.flink.api.java.utils.DataSetUtils;
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.fs.FileSystem.WriteMode;
 import org.apache.flink.util.Collector;
+import org.apache.log4j.ConsoleAppender;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
+import org.apache.log4j.PatternLayout;
+
+import net.sourceforge.argparse4j.ArgumentParsers;
+import net.sourceforge.argparse4j.impl.Arguments;
+import net.sourceforge.argparse4j.inf.ArgumentParser;
+import net.sourceforge.argparse4j.inf.Namespace;
 
 /**
  * Implements the "WordCount" program that computes a simple word occurrence histogram
@@ -60,30 +68,40 @@ public class DBLPFormatJob {
 	//
 	//	Program
 	//
-	private final static String LINE_DELIMITTER = "\n";
-	private final static String FIELD_DELIMITTER = "\\,";
-//	private final static char QUOTE_CHAR = '"';
+	private static String LINE_DELIMITTER;
+	private static String FIELD_DELIMITTER;
+	private final static char QUOTE_CHAR = '"';
+	private static String PUBLICATION_PATH;
+	private static String COLLECTIONS_PATH;
+	private static String DEST_PATH;
 	
 	
 	@SuppressWarnings("unchecked")
 	public static void main(String[] args) throws Exception {
 		// set up the execution environment
-		final ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
-		CsvReader publicationsReader = env.readCsvFile("dblp-src/publications.csv")
-				.fieldDelimiter(FIELD_DELIMITTER)
-				.lineDelimiter(LINE_DELIMITTER);
-//				.parseQuotedStrings(QUOTE_CHAR);
-		CsvReader collectionsReader = env.readCsvFile("dblp-src/collections.csv")
-				.fieldDelimiter(FIELD_DELIMITTER)
-				.lineDelimiter(LINE_DELIMITTER);
-//				.parseQuotedStrings(QUOTE_CHAR);
 		
-		DataSet<Tuple2<Long, String>> cites = publicationsReader
-				.ignoreInvalidLines()
-				.includeFields(true, false, false, false, false, false, false, true)
-				.types(Long.class, String.class)
-				.flatMap(new Splitter<Tuple2<Long, String>>(1))
-				.flatMap(new KeyCleaner<Tuple2<Long, String>>(1));
+		processArgs(args);
+		
+		try {
+		final ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
+		CsvReader publicationsReader = env.readCsvFile(PUBLICATION_PATH + "dblp-publications.csv")
+				.parseQuotedStrings(QUOTE_CHAR)
+				.fieldDelimiter(FIELD_DELIMITTER)
+				.lineDelimiter(LINE_DELIMITTER)
+				.ignoreInvalidLines();
+		CsvReader collectionsReader = env.readCsvFile(COLLECTIONS_PATH + "dblp-collections.csv")
+				.parseQuotedStrings(QUOTE_CHAR)
+				.fieldDelimiter(FIELD_DELIMITTER)
+				.lineDelimiter(LINE_DELIMITTER)
+				.ignoreInvalidLines();
+		
+//		DataSet<Tuple2<Long, String>> cites = publicationsReader
+//				.includeFields(true, false, false, false, false, false, false, true)
+//				.ignoreInvalidLines()
+//				.types(Long.class, String.class)
+////				.flatMap(new TupleCaster<Tuple2<String, String>>(new Tuple2<Long, String>(), 0)).
+//				.flatMap(new Splitter<Tuple2<Long, String>>(1))
+//				.flatMap(new KeyCleaner<Tuple2<Long, String>>(1));
 		
 		//titles
 		DataSet<Tuple3<Long, String, String>> titles = generateUniqueIds(publicationsReader
@@ -138,7 +156,7 @@ public class DBLPFormatJob {
 		DataSet<Tuple2<Long, Long>> documentTypeJoin = pubs.coGroup(documentTypes).where(1).equalTo(1).with(new Join());
 		DataSet<Tuple2<Long, Long>> venueSeriesJoin = pubs.coGroup(venueSeries).where(5).equalTo(2).with(new Join());
 		DataSet<Tuple2<Long, Long>> authorJoin = pubs.flatMap(new Splitter<Tuple7<Long, String, String, String, Long, String, String>>(6)).coGroup(authors).where(6).equalTo(1).with(new Join());
-		DataSet<Tuple2<Long, Long>> citeJoin = pubs.coGroup(cites).where(2).equalTo(1).with(new Join());
+//		DataSet<Tuple2<Long, Long>> citeJoin = pubs.coGroup(cites).where(2).equalTo(1).with(new Join());
 		
 		DataSet<Tuple9<Long, Long, Long, Long, Long, Long, Long, Long, Long>> publications = publicationsReader
 				.includeFields(true)
@@ -149,22 +167,70 @@ public class DBLPFormatJob {
 		publications = publications.coGroup(venueSeriesJoin).where(0).equalTo(0).with(new PublicationMerge(4));
 		publications = publications.coGroup(documentTypeJoin).where(0).equalTo(0).with(new PublicationMerge(2));
 		
-		saveDataSetAsCsv("dblp-target/cite.csv", citeJoin, 0);
-		saveDataSetAsCsv("dblp-target/title.csv", titles, 0);
-		saveDataSetAsCsv("dblp-target/time.csv", times, 0);
-		saveDataSetAsCsv("dblp-target/venue_series.csv", venueSeries, 0);
-		saveDataSetAsCsv("dblp-target/author.csv", authors, 0);
-		saveDataSetAsCsv("dblp-target/document_type.csv", documentTypes, 0);
-		saveDataSetAsCsv("dblp-target/author_publication_map.csv", authorJoin, 0);
-		saveDataSetAsCsv("dblp-target/publication.csv", publications,0);
+//		saveDataSetAsCsv(DEST_PATH + "publication_citing_map.csv", citeJoin, 0);
+		saveDataSetAsCsv(DEST_PATH + "title.csv", titles, 0);
+		saveDataSetAsCsv(DEST_PATH + "time.csv", times, 0);
+		saveDataSetAsCsv(DEST_PATH + "venue_series.csv", venueSeries, 0);
+		saveDataSetAsCsv(DEST_PATH + "author.csv", authors, 0);
+		saveDataSetAsCsv(DEST_PATH + "document_type.csv", documentTypes, 0);
+		saveDataSetAsCsv(DEST_PATH + "author_publication_map.csv", authorJoin, 0);
+		saveDataSetAsCsv(DEST_PATH + "publication.csv", publications,0);
 		
 		env.execute();
+		} catch(Exception e) {
+			e.printStackTrace();
+		}
 	}
 	
-	private static <T extends Tuple> DataSet<T> generateUniqueIds(DataSet<T> dataSet)
+	protected static ArgumentParser createArgsParser() {
+        ArgumentParser parser = ArgumentParsers.newArgumentParser("pub-importer");
+        parser.version(DBLPFormatJob.class.getPackage().getImplementationVersion());
+        parser.addArgument("-V", "--version").action(Arguments.version());
+
+        parser.addArgument("-ld")
+              .help("line delimitter")
+              .type(String.class)
+              .setDefault("\n");
+
+        parser.addArgument("-fd")
+	        .help("field delimitter")
+	        .type(String.class)
+	        .setDefault(",");
+        
+        parser.addArgument("-pub")
+	        .help("path of publication.csv")
+	        .required(true);
+        
+		parser.addArgument("-col")
+	        .help("path of collection.csv")
+	        .required(true);
+
+        parser.addArgument("-target")
+        	.help("target path, CSV-format, containing files will be overwritten")
+        	.required(true);
+
+        return parser;
+    }
+	
+	private static void processArgs(String[] rawArgs)
 	{
-		return DataSetUtils.zipWithUniqueId(dataSet)
-				.flatMap(new IdExtractor<T>());
+        ConsoleAppender appender = new ConsoleAppender(new PatternLayout(PatternLayout.TTCC_CONVERSION_PATTERN), "System.err");
+        appender.setThreshold(Level.WARN);
+        Logger.getRootLogger().addAppender(appender);
+
+        Namespace args = createArgsParser().parseArgsOrFail(rawArgs);
+        FIELD_DELIMITTER = args.getString("fd");
+        LINE_DELIMITTER = args.getString("ld");
+        COLLECTIONS_PATH = args.getString("col");
+        PUBLICATION_PATH = args.getString("pub");
+        DEST_PATH = args.getString("target");
+	}
+	
+	private static <T extends Tuple> DataSet<T> generateUniqueIds(DataSet<T> dataSet) throws Exception
+	{
+		return dataSet;
+//		return DataSetUtils.zipWithUniqueId(dataSet)
+//				.flatMap(new IdExtractor<T>());
 	}
 	
 	private static <T extends Tuple> DataSink<?> saveDataSetAsCsv(String path, DataSet<T> dataSet, int sortIndex)
@@ -327,5 +393,4 @@ public class DBLPFormatJob {
 		}
 		
 	}
-	
 }
