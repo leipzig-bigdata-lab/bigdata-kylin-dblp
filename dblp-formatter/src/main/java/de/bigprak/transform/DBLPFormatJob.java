@@ -95,58 +95,52 @@ public class DBLPFormatJob {
 				.lineDelimiter(LINE_DELIMITTER)
 				.ignoreInvalidLines();
 		
-//		DataSet<Tuple2<Long, String>> cites = publicationsReader
-//				.includeFields(true, false, false, false, false, false, false, true)
-//				.ignoreInvalidLines()
-//				.types(Long.class, String.class)
-////				.flatMap(new TupleCaster<Tuple2<String, String>>(new Tuple2<Long, String>(), 0)).
-//				.flatMap(new Splitter<Tuple2<Long, String>>(1))
-//				.flatMap(new KeyCleaner<Tuple2<Long, String>>(1));
+		DataSet<Tuple2<Long, String>> cites = publicationsReader
+				.includeFields(true, false, false, false, false, false, false, true)
+				.ignoreInvalidLines()
+				.types(Long.class, String.class)
+				.flatMap(new Splitter<Tuple2<Long, String>>(1))
+				.flatMap(new KeyCleaner<Tuple2<Long, String>>(1));
 		
 		//titles
 		DataSet<Tuple3<Long, String, String>> titles = generateUniqueIds(publicationsReader
-			.includeFields(true, false, true, true)
+			.includeFields(true, false, true, true).ignoreInvalidLines()
 			.types(Long.class, String.class, String.class))
 			.project(0,2,1);//swap parameters
 		
 		//document types
 		DataSet<Tuple3<Long, String, String>> documentTypeSetA = publicationsReader
-			.includeFields(true, true)
+			.includeFields(true, true).ignoreInvalidLines()
 			.types(Long.class, String.class, String.class);
 		
 		//authors
 		DataSet<Tuple3<Long, String, Long>> authors = generateUniqueIds(publicationsReader
-			.includeFields(true, false, false, false, false, false, true)
+			.includeFields(true, false, false, false, false, false, true).ignoreInvalidLines()
 			.types(Long.class, String.class, Long.class)
 			.flatMap(new Splitter<Tuple3<Long, String, Long>>(1)).distinct(1));
 		
 		//time
 		DataSet<Tuple5<Long, Long, Long, Long, Long>> times = generateUniqueIds(publicationsReader
-			.includeFields(true, false, false, false, true)
+			.includeFields(true, false, false, false, true).ignoreInvalidLines()
 			.types(Long.class, Long.class, Long.class, Long.class, Long.class)
 			.flatMap(new DecadeCalculator()).distinct(1));
 		
 		//venue series
 		DataSet<Tuple3<Long, String, String>> venueSeries = generateUniqueIds(collectionsReader
-			.includeFields(true, false, true, true)
+			.includeFields(true, false, true, true).ignoreInvalidLines()
 			.types(Long.class, String.class, String.class))
 			.project(0,2,1);
 //		venueSeries = venueSeries.flatMap(new KeyCleaner()); //remove ref: from venueseries key
 		
 		//extract document types from collections csv and append to document_type.csv
 		DataSet<Tuple3<Long, String, String>> documentTypeSetB = collectionsReader
-			.includeFields(true, true)
+			.includeFields(true, true).ignoreInvalidLines()
 			.types(Long.class, String.class, String.class);
 		
 		DataSet<Tuple3<Long, String, String>> documentTypes = generateUniqueIds(documentTypeSetA.union(documentTypeSetB).distinct(1));
 		
-//		DataSet<Tuple8<Long, String, String, String, Long, String, String, String>> pubs = publicationsReader
-//				.includeFields(true, true, true, true, true, true, true, true)
-//				.ignoreInvalidLines()
-//				.types(Long.class, String.class, String.class, String.class, Long.class, String.class, String.class, String.class);
-		
 		DataSet<Tuple7<Long, String, String, String, Long, String, String>> pubs = publicationsReader
-				.includeFields(true, true, true, true, true, true, true)
+				.includeFields(true, true, true, true, true, true, true).ignoreInvalidLines()
 				.types(Long.class, String.class, String.class, String.class, Long.class, String.class, String.class)
 				.flatMap(new KeyCleaner<Tuple7<Long, String, String, String, Long, String, String>>(5));
 		
@@ -156,10 +150,10 @@ public class DBLPFormatJob {
 		DataSet<Tuple2<Long, Long>> documentTypeJoin = pubs.coGroup(documentTypes).where(1).equalTo(1).with(new Join());
 		DataSet<Tuple2<Long, Long>> venueSeriesJoin = pubs.coGroup(venueSeries).where(5).equalTo(2).with(new Join());
 		DataSet<Tuple2<Long, Long>> authorJoin = pubs.flatMap(new Splitter<Tuple7<Long, String, String, String, Long, String, String>>(6)).coGroup(authors).where(6).equalTo(1).with(new Join());
-//		DataSet<Tuple2<Long, Long>> citeJoin = pubs.coGroup(cites).where(2).equalTo(1).with(new Join());
+		DataSet<Tuple2<Long, Long>> citeJoin = pubs.coGroup(cites).where(2).equalTo(1).with(new Join());
 		
 		DataSet<Tuple9<Long, Long, Long, Long, Long, Long, Long, Long, Long>> publications = publicationsReader
-				.includeFields(true)
+				.includeFields(true).ignoreInvalidLines()
 				.types(Long.class, Long.class, Long.class, Long.class, Long.class, Long.class, Long.class, Long.class, Long.class);
 		
 		publications = publications.coGroup(timeJoin).where(0).equalTo(0).with(new PublicationMerge(3));
@@ -167,7 +161,7 @@ public class DBLPFormatJob {
 		publications = publications.coGroup(venueSeriesJoin).where(0).equalTo(0).with(new PublicationMerge(4));
 		publications = publications.coGroup(documentTypeJoin).where(0).equalTo(0).with(new PublicationMerge(2));
 		
-//		saveDataSetAsCsv(DEST_PATH + "publication_citing_map.csv", citeJoin, 0);
+		saveDataSetAsCsv(DEST_PATH + "publication_citing_map.csv", citeJoin, 0);
 		saveDataSetAsCsv(DEST_PATH + "title.csv", titles, 0);
 		saveDataSetAsCsv(DEST_PATH + "time.csv", times, 0);
 		saveDataSetAsCsv(DEST_PATH + "venue_series.csv", venueSeries, 0);
@@ -263,11 +257,12 @@ public class DBLPFormatJob {
 			Tuple2<Long, Long> map = new Tuple2<>();
 			try {
 				map = second.iterator().next();
-			} catch(NoSuchElementException e) {
-				e.printStackTrace();
+			} catch(Exception e) {
+				
 			}
-			
 			result.setField(map.f1, index);
+			if(result.getField(index) == null)
+				return;
 			out.collect(result);
 		}
 	}
