@@ -89,6 +89,11 @@ under the License.
             <artifactId>argparse4j</artifactId>
             <version>0.7.0</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-csv</artifactId>
+            <version>1.2</version>
+        </dependency>
 	</dependencies>
 
 	<build>
