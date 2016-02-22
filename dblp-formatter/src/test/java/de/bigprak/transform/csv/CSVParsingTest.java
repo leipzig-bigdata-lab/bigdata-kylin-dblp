@@ -15,6 +15,7 @@ public class CSVParsingTest {
         ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
 
         CSVFormat csvFormat = CSVFormat.newFormat(',')
+                .withRecordSeparator('\n')
                 .withEscape('\\')
                 .withQuoteMode(QuoteMode.NONE)
                 .withNullString("");
@@ -39,7 +40,7 @@ public class CSVParsingTest {
            .map(new CSVRecordToTupleMap<Tuple3<Long, String, String>>(indices, types))
            // necessary, because flink cannot deduce return type from generic Mapper
            .returns("Tuple3<Long, String, String>")
-           .writeAsCsv(out.getAbsolutePath());
+           .write(new CommonsCSVOutputFormat<Tuple3<Long, String, String>>(csvFormat), out.getAbsolutePath());
 
         env.setParallelism(1);
         env.execute();
