@@ -14,3 +14,16 @@ HIVE - VIEW CREATION:
 	CREATE VIEW IF NOT EXISTS acm.author_pub(publication_id, author_id, name, institution_id) COMMENT 'JOIN between author and publication_author_map' AS SELECT DISTINCT publication_author_map.publication_id, author.author_id, author.name, author.institution_id FROM author RIGHT JOIN publication_author_map ON author.author_id = publication_author_map.author_id;
 #KYLIN - TABLE IMPORT:
 	acm.author,acm.author_pub,acm.document_type,acm.institution,acm.publication,acm.publication_author_map,acm.publication_citing_map,acm.timeinfo,acm.title,acm.venue_series,acm.author_pub
+	
+
+########################################################################################################################
+#HQL OLAP STATEMENTS
+	SELECT COUNT(t.title) 
+	FROM title t
+	JOIN publication p
+	 ON (p.title_id = t.title_id)
+	JOIN author_publication_map apm
+	 ON (apm.publication_id = p.publication_id)
+	JOIN author a
+	 ON (a.author_id = apm.author_id)
+	WHERE a.name = 'Erhard Rahm';
