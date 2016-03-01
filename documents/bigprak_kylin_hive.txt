@@ -22,7 +22,7 @@ HIVE - VIEW CREATION:
 	FROM title t
 	JOIN publication p
 	 ON (p.title_id = t.title_id)
-	JOIN author_publication_map apm
+	JOIN publication_author_map apm
 	 ON (apm.publication_id = p.publication_id)
 	JOIN author a
 	 ON (a.author_id = apm.author_id)
