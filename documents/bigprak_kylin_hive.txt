@@ -26,4 +26,5 @@ HIVE - VIEW CREATION:
 	 ON (apm.publication_id = p.publication_id)
 	JOIN author a
 	 ON (a.author_id = apm.author_id)
-	WHERE a.name = 'Erhard Rahm';
+	WHERE a.author_id = 404586--'Erhard Rahm'
+	;
