@@ -3,7 +3,7 @@
 HIVE - VIEW CREATION:
 	CREATE VIEW IF NOT EXISTS dblp.author_pub(publication_id, author_id, name, institution_id) COMMENT 'JOIN between author and publication_author_map' AS SELECT DISTINCT publication_author_map.publication_id, author.author_id, author.name, author.institution_id FROM author RIGHT JOIN publication_author_map ON author.author_id = publication_author_map.author_id;
 #KYLIN - TABLE IMPORT:
-	dblp.author,dblp.author_pub,dblp.document_type,dblp.institution,dblp.publication,dblp.publication_author_map,dblp.publication_citing_map,dblp.timeinfo,dblp.title,dblp.venue_series,dblp.author_pub
+	dblp.author,dblp.author_pub,dblp.document_type,dblp.institution,dblp.publication,dblp.publication_author_map,dblp.publication_citing_map,dblp.timeinfo,dblp.title,dblp.venue_series
 ########################################################################################################################
 
 
@@ -13,7 +13,7 @@ HIVE - VIEW CREATION:
 #HIVE - VIEW CREATION:
 	CREATE VIEW IF NOT EXISTS acm.author_pub(publication_id, author_id, name, institution_id) COMMENT 'JOIN between author and publication_author_map' AS SELECT DISTINCT publication_author_map.publication_id, author.author_id, author.name, author.institution_id FROM author RIGHT JOIN publication_author_map ON author.author_id = publication_author_map.author_id;
 #KYLIN - TABLE IMPORT:
-	acm.author,acm.author_pub,acm.document_type,acm.institution,acm.publication,acm.publication_author_map,acm.publication_citing_map,acm.timeinfo,acm.title,acm.venue_series,acm.author_pub
+	acm.author,acm.author_pub,acm.document_type,acm.institution,acm.publication,acm.publication_author_map,acm.publication_citing_map,acm.timeinfo,acm.title,acm.venue_series
 	
 
 ########################################################################################################################
