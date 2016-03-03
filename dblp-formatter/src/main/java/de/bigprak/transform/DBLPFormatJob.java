@@ -253,7 +253,7 @@ public class DBLPFormatJob {
 			publications = publications.coGroup(titleJoin).where(0).equalTo(0).with(new PublicationMerge(1));
 			publications = publications.coGroup(authorJoin).where(0).equalTo(0).with(new PublicationMerge(9));
 			
-			publications = publications.coGroup(authors).where(9).equalTo(0).with(new PublicationMerge(10));
+//			publications = publications.coGroup(authors).where(9).equalTo(0).with(new PublicationMerge(10));
 			
 			//save dimension and fact table/s
 			if(isDBLP) {
@@ -262,7 +262,7 @@ public class DBLPFormatJob {
 			}
 			saveDataSetAsCsv(TARGET_PATH + "/" + TYPE + "/" + "title/title.csv", titles, 0, csvFormat);
 			saveDataSetAsCsv(TARGET_PATH + "/" + TYPE + "/" + "time/time.csv", times, 0, csvFormat);
-//			saveDataSetAsCsv(TARGET_PATH + "/" + TYPE + "/" + "author/author.csv", authors, 0, csvFormat);
+			saveDataSetAsCsv(TARGET_PATH + "/" + TYPE + "/" + "author/author.csv", authors, 0, csvFormat);
 //			saveDataSetAsCsv(TARGET_PATH + "/" + TYPE + "/" + "publication_author_map/publication_author_map.csv", authorJoin, 0, csvFormat);
 			saveDataSetAsCsv(TARGET_PATH + "/" + TYPE + "/" + "publication/publication.csv", publications, 0, csvFormat);
 			
