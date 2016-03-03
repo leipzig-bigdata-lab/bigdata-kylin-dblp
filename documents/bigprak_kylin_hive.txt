@@ -37,3 +37,13 @@ dblpalt.document_type,dblpalt.publication,dblpalt.timeinfo,dblpalt.title,dblpalt
 	GROUP BY p.author_name
 	SORT BY DESC
 	;
+
+	select max(num_c) as max_c, author_name
+	from (
+		select sum(citings_dblp) as num_c, author_name 
+		from publication group by author_name
+	) 
+	where time_id = 79
+	group by author_name
+	order by max_c desc
+	limit 10;
