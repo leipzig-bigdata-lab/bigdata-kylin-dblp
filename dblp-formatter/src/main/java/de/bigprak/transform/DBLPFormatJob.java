@@ -1,10 +1,7 @@
 package de.bigprak.transform;
 
-import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
-
-import javax.swing.SortOrder;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
@@ -31,24 +28,21 @@ import org.apache.flink.api.common.operators.Order;
 
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
-import org.apache.flink.api.java.io.CsvReader;
 import org.apache.flink.api.java.operators.DataSink;
 import org.apache.flink.api.java.operators.DataSource;
 import org.apache.flink.api.java.tuple.Tuple;
 import org.apache.flink.api.java.tuple.Tuple1;
+import org.apache.flink.api.java.tuple.Tuple11;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.api.java.tuple.Tuple5;
 import org.apache.flink.api.java.tuple.Tuple7;
-import org.apache.flink.api.java.tuple.Tuple9;
 import org.apache.flink.api.java.utils.DataSetUtils;
 import org.apache.flink.core.fs.FileSystem.WriteMode;
 import org.apache.log4j.ConsoleAppender;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PatternLayout;
-
-import com.codahale.metrics.CsvReporter;
 
 import de.bigprak.transform.cogroup.Count;
 import de.bigprak.transform.cogroup.Join;
@@ -117,7 +111,7 @@ public class DBLPFormatJob {
 			DataSet<Tuple2<Long, String>> documentTypeSetB = null;
 			DataSet<Tuple3<Long, String, String>> documentTypes = null;
 			DataSet<Tuple3<Long, String, String>> titles = null;
-			DataSet<Tuple3<Long, String, Long>> authors = null;
+			DataSet<Tuple2<Long, String>> authors = null;
 			DataSet<Tuple5<Long, Long, Long, Long, Long>> times = null;
 			DataSet<Tuple7<Long, String, String, String, Long, String, String>> pubs = null;
 			
@@ -167,9 +161,7 @@ public class DBLPFormatJob {
 				authors = generateUniqueIds(publicationsReader
 						.map(new CSVRecordToTupleMap<Tuple2<Long, String>>(new int[] {0, 6}, new Class[] {Long.class, String.class}))
 						.returns("Tuple2<Long, String>")
-						.flatMap(new AppendTupleFields<Tuple2<Long, String>, Tuple3<Long, String, Long>>(new Tuple3<Long, String, Long>(-1L, "-1", -1L)))
-						.returns("Tuple3<Long, String, Long>")
-						.flatMap(new Splitter<Tuple3<Long, String, Long>>(1)) //split authors
+						.flatMap(new Splitter<Tuple2<Long, String>>(1)) //split authors
 						.distinct(1)); //eliminate duplicates
 				
 				//extract data for time table from source files 
@@ -200,9 +192,7 @@ public class DBLPFormatJob {
 				authors = generateUniqueIds(publicationsReader
 						.map(new CSVRecordToTupleMap<Tuple2<Long, String>>(new int[] {0, 5}, new Class[] {Long.class, String.class}))
 						.returns("Tuple2<Long, String>")
-						.flatMap(new AppendTupleFields<Tuple2<Long, String>, Tuple3<Long, String, Long>>(new Tuple3<Long, String, Long>(-1L, "-1", -1L)))
-						.returns("Tuple3<Long, String, Long>")
-						.flatMap(new Splitter<Tuple3<Long, String, Long>>(1)) //split authors
+						.flatMap(new Splitter<Tuple2<Long, String>>(1)) //split authors
 						.distinct(1)); //eliminate duplicates
 				
 				//extract data for time table from source files 
@@ -244,11 +234,11 @@ public class DBLPFormatJob {
 			}
 			
 			//prepare fact table 
-			DataSet<Tuple9<Long, Long, Long, Long, Long, Long, Long, Long, Long>> publications = publicationsReader
+			DataSet<Tuple11<Long, Long, Long, Long, Long, Long, Long, Long, Long, Long, String>> publications = publicationsReader
 					.map(new CSVRecordToTupleMap<Tuple1<Long>>(new int[] {0}, new Class[] {Long.class}))
 					.returns("Tuple1<Long>")
-					.flatMap(new AppendTupleFields<Tuple1<Long>, Tuple9<Long, Long, Long, Long, Long, Long, Long, Long, Long>>(new Tuple9<Long, Long, Long, Long, Long, Long, Long, Long, Long>(-1L, -1L, -1L, -1L, -1L, 0L, 0L, 0L, 0L)))
-					.returns("Tuple9<Long, Long, Long, Long, Long, Long, Long, Long, Long>");
+					.flatMap(new AppendTupleFields<Tuple1<Long>, Tuple11<Long, Long, Long, Long, Long, Long, Long, Long, Long, Long, String>>(new Tuple11<Long, Long, Long, Long, Long, Long, Long, Long, Long, Long, String>(-1L, -1L, -1L, -1L, -1L, 0L, 0L, 0L, 0L, -1L, "")))
+					.returns("Tuple11<Long, Long, Long, Long, Long, Long, Long, Long, Long, Long, String>");
 			
 			//merge joins
 			//join on fact table ids, then dispose joins except of author map
@@ -261,7 +251,9 @@ public class DBLPFormatJob {
 			}
 			publications = publications.coGroup(timeJoin).where(0).equalTo(0).with(new PublicationMerge(3));
 			publications = publications.coGroup(titleJoin).where(0).equalTo(0).with(new PublicationMerge(1));
-			if(isDBLP)
+			publications = publications.coGroup(authorJoin).where(0).equalTo(0).with(new PublicationMerge(9));
+			
+			publications = publications.coGroup(authors).where(9).equalTo(0).with(new PublicationMerge(10));
 			
 			//save dimension and fact table/s
 			if(isDBLP) {
@@ -270,8 +262,8 @@ public class DBLPFormatJob {
 			}
 			saveDataSetAsCsv(TARGET_PATH + "/" + TYPE + "/" + "title/title.csv", titles, 0, csvFormat);
 			saveDataSetAsCsv(TARGET_PATH + "/" + TYPE + "/" + "time/time.csv", times, 0, csvFormat);
-			saveDataSetAsCsv(TARGET_PATH + "/" + TYPE + "/" + "author/author.csv", authors, 0, csvFormat);
-			saveDataSetAsCsv(TARGET_PATH + "/" + TYPE + "/" + "publication_author_map/publication_author_map.csv", authorJoin, 0, csvFormat);
+//			saveDataSetAsCsv(TARGET_PATH + "/" + TYPE + "/" + "author/author.csv", authors, 0, csvFormat);
+//			saveDataSetAsCsv(TARGET_PATH + "/" + TYPE + "/" + "publication_author_map/publication_author_map.csv", authorJoin, 0, csvFormat);
 			saveDataSetAsCsv(TARGET_PATH + "/" + TYPE + "/" + "publication/publication.csv", publications, 0, csvFormat);
 			
 			env.execute();
