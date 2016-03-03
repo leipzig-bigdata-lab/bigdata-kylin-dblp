@@ -1,11 +1,14 @@
 package de.bigprak.transform.flatmap;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.java.tuple.Tuple;
+import org.apache.flink.types.NullFieldException;
 import org.apache.flink.util.Collector;
+
 
 public final class Splitter<T extends Tuple> implements FlatMapFunction<T, T>
 {

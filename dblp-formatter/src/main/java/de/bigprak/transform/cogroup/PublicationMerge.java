@@ -1,11 +1,14 @@
 package de.bigprak.transform.cogroup;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.apache.flink.api.common.functions.CoGroupFunction;
+import org.apache.flink.api.java.tuple.Tuple11;
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.api.java.tuple.Tuple9;
 import org.apache.flink.util.Collector;
 
-public final class PublicationMerge implements CoGroupFunction<Tuple9<Long, Long, Long, Long, Long, Long, Long, Long, Long>, Tuple2<Long, Long>, Tuple9<Long, Long, Long, Long, Long, Long, Long, Long, Long>>
+public final class PublicationMerge<T> implements CoGroupFunction<Tuple11<Long, Long, Long, Long, Long, Long, Long, Long, Long, Long, String>, Tuple2<Long, T>, Tuple11<Long, Long, Long, Long, Long, Long, Long, Long, Long, Long, String>>
 {
 	/**
 	 * 
@@ -17,21 +20,25 @@ public final class PublicationMerge implements CoGroupFunction<Tuple9<Long, Long
 	public PublicationMerge(int index) {
 		this.index = index;
 	}
-	
+
 	@Override
-	public void coGroup(Iterable<Tuple9<Long, Long, Long, Long, Long, Long, Long, Long, Long>> first,
-			Iterable<Tuple2<Long, Long>> second,
-			Collector<Tuple9<Long, Long, Long, Long, Long, Long, Long, Long, Long>> out) throws Exception {
-		Tuple9<Long, Long, Long, Long, Long, Long, Long, Long, Long> result = first.iterator().next();
-		Tuple2<Long, Long> map = new Tuple2<>();
-		try {
-			map = second.iterator().next();
-		} catch(Exception e) {
-			
+	public void coGroup(Iterable<Tuple11<Long, Long, Long, Long, Long, Long, Long, Long, Long, Long, String>> first,
+			Iterable<Tuple2<Long, T>> second,
+			Collector<Tuple11<Long, Long, Long, Long, Long, Long, Long, Long, Long, Long, String>> out) throws Exception {
+
+		List<Tuple2<Long, T>> list = new ArrayList<>();
+		for(Tuple2<Long, T> item : second)
+		{
+			list.add(item);
 		}
-		result.setField(map.f1, index);
-		if(result.getField(index) == null)
-			return;
-		out.collect(result);
+		
+		for(Tuple11 result : first)
+		{
+			for(Tuple2<Long, T> map : list)
+			{
+				result.setField(map.f1, index);
+				out.collect(result);
+			}
+		}	
 	}
 }

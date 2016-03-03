@@ -58,7 +58,7 @@ public class CSVRecordToTupleMap<T extends Tuple> implements MapFunction<CSVReco
 
             try {
                 Constructor<?> constructor = types[i].getConstructor(String.class);
-                value = constructor.newInstance(record.get(indices[i]));
+                value = constructor.newInstance(record.get(indices[i]) == null ? "" : record.get(indices[i]));
             } catch(Exception e) {
                 throw new RuntimeException("Could not convert column " + indices[i] + " to type " + types[i].getName(), e);
             }
