@@ -1,12 +1,7 @@
 # This file contains information about the different PDI files in this directory #
 
 ### General: ###
-A transformation (*.ktr) contains several steps. Steps transform data in different ways. 
-A job (*.kjb) contains one or more transformation an should always begin with a dummy object called "START" and end with 
-a dummy object called "Success" (best way for noticing those events in log-files while debugging errors).
-The files in this directory are supposed to be combined/parallelized later on in one job. So it would be possible to
-handle the whole process (download, validate, import into hdfs, transform and load into hive) for dblp-data with pdi.
-If this is implemented it would also be possible to run this process automated every day or week.
+A transformation (*.ktr) contains several steps. Steps transform data in different ways.  A job (*.kjb) contains one or more transformation an should always begin with a dummy object called "START" and end with a dummy object called "Success" (best way for noticing those events in log-files while debugging errors). The files in this directory are supposed to be combined/parallelized later on in one job. So it would be possible to handle the whole process (download, validate, import into hdfs, transform and load into hive) for dblp-data with pdi. If this is implemented it would also be possible to run this process automated every day or week.
 
 ### Files: ###
 * **getData.ktr** (Transformation)
