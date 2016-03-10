@@ -15,7 +15,7 @@ If this is implemented it would also be possible to run this process automated e
     * Job that contains "getData.ktr". It runs the transformation and could be parallelized with other transformation.
 * **loadFilesIntoHive.kjb** (Job)
     * Copies files to hdfs, so hive can use the data for its tables.
-* *loadXmlFiles.kjb* (Job)
+* **loadXmlFiles.kjb** (Job)
     * Loads xml-source file into hdfs filesystem.
 * **validateDblpXml.kjb** (Job)
     * Validates the source xml-file of dblp-data. It uses the "dblp.dtd" file provided by uni-trier. (See http://dblp.uni-trier.de/xml/)
