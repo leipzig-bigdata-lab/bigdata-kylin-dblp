@@ -10,8 +10,9 @@ Praxistauglichkeit von Apache Kylin für die Data-Warehouse-Analyse von großen
 Datenmengen. Dazu sollte eine Zitierungsanalyse auf Basis der Daten der [dblp]
 durchgeführt werden.
 
-Details zum Ablauf und den Ergebnissen finden sich in der Lösungsskizze und
-der Abschlusspräsentation des Praktikums im Ordner `documents`.
+Details zum Ablauf und den Ergebnissen finden sich in der
+[Lösungsskizze][solution] und der [Abschlusspräsentation][presentation]
+des Praktikums. Der LaTeX-Quelltext befindet sich im Ordner `documents`.
 
 ## Software
 
@@ -26,7 +27,7 @@ der Abschlusspräsentation des Praktikums im Ordner `documents`.
 Die verwendete Software wurde im pseudoverteilten Modus auf einem von der
 Abteilung Datenbanken bereitgestellten Rechner mit einem Intel Xeon W3520
 und 6 GiB RAM unter Verwendung von Ubuntu 14.04 installiert. Details zur
-Installation und Konfiguration finden sich im der Datei `INSTALL.md`.
+Installation und Konfiguration finden sich in der Datei [INSTALL.md][install].
 
 ## Werkzeuge
 
@@ -50,5 +51,8 @@ denen direkt externe Hive-Tabellen definiert werden können.
 flink run pub-formatter.jar -type dblp -source "hdfs:////path/in/hdfs" -target "hdfs:////hive/dblp"
 ```
 
+[solution]: https://github.com/klemens/bigdata-kylin-dblp/releases/download/attestation-3/solution-outline.pdf
+[presentation]: https://github.com/klemens/bigdata-kylin-dblp/releases/download/attestation-3/presentation.pdf
 [dblp]: http://dblp.uni-trier.de/
+[install]: ./INSTALL.md
 [xml]: http://dblp.uni-trier.de/xml/
