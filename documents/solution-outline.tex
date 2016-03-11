@@ -20,13 +20,14 @@
 \noindent
 Praktikum: Big Data \hfill Klemens Schölhorn, Sebastian Lange, Simon Hüning \hfill 04.02.2016\vspace{-.4cm}\\
 \begin{center}
-\huge\textsf{Lösungsskizze zum zweiten Testat}\vspace{.1cm}\\
+\huge\textsf{Lösungsskizze}\vspace{.1cm}\\
 \large Zitierungsanalyse auf den Daten der DBLP unter Verwendung von Apache Kylin
 \end{center}
 
 \section*{Einleitung}
 
-Die ersten drei Abschnitte beschreiben die bisher umgesetzten Arbeiten, während in Sektion \ref{sec:plan} der Plan für die noch ausstehenden Tätigkeiten dargelegt wird.
+Die ersten zwei Abschnitte beschreiben die Server Konfiguration und die Vorüberlegungen zum Datenbank-Schema. Die darauf folgenden Abschnitte befassen sich mit der Umsetzung der Aufgaben sowie dabei auftretenden Problemen und in Folge dessen getroffenen Entscheidungen. Das Dokument soll die durchgeführten Arbeiten erläutern und bestimmte Entscheidungen während des Projektverlaufs nachvollziehbar machen. Es stellt \textbf{keine} detaillierte Installationsanleitung dar. Diese befindet sich im Wurzelverzeichnis des zum Projekt angelegten Repository.
+
 
 \section{Server}
 
@@ -66,7 +67,7 @@ Das folgende vorläufige Datenbankschema basiert auf dem in der Aufgabenstellung
     \item \texttt{Document\_Type}: Typ der Publication, z.\,B. Journal, Artikel, Kollektion
 \end{itemize}
 
-\section{Datenimport}
+\section{Datenimport und -Transformation}
 
 Der Import der Daten gestaltete sich aufgrund der Datengröße schwierig. So kann die \texttt{dblp.xml} nicht direkt mit einem DOM-Parser verarbeitet werden, da dafür zu viel Speicher benötigt wird. Aus diesem Grund muss ein SAX- oder StaX-Parser verwendet werden.
 
@@ -98,19 +99,30 @@ Allerdings gab es auch hier einige Komplikationen: Das Problem ist die Verwendun
 
 Abgesehen von diesem Problem läuft der Transformationsvorgang reibungslos. So werden zuerst die Dimensionstabellen erzeugt, indem die nötigen Felder aus den importierten Dateien in neue CSV-Dateien projiziert werden. Jeder Eintrag in den Tabellen ist dabei eindeutig. Die Faktentabelle entsteht anschließend durch einen Join der Dimensionstabellen. Der gesamte Vorgang dauert auf den dblp-Daten ca. zehn Minuten.
 
-\section{Plan}
-\label{sec:plan}
+\subsection{Externe Hive-Tabellen}
 
-\subsection{Definieren der externen Hive-Tabellen}
+Nach Abschluss des Datenverarbeitungsschrittes, bei dem die Daten mit dem \texttt{dblp-formatter} in einzelne CSV-Dateien überführt werden, wurden darauf externe Hive-Tabellen definiert, um den Zugriff aus Kylin zu ermöglichen.
 
-Nach Abschluss des Datenverarbeitungsschrittes, bei dem die Daten mit dem \texttt{dblp-formatter} in einzelne CSV-Dateien überführt werden, werden darauf entsprechende externe Hive-Tabellen definiert, um den Zugriff aus Kylin zu ermöglichen. Dies ist aktuell bereits größtenteils umgesetzt.
+\section{Analyse}
+\label{sec:Analyse}
 
 \subsection{Cube-Generierung mit Kylin}
 
-Wenn die Tabellen in Hive definiert sind, sollte die Generierung der Cubes in Kylin relativ einfach möglich sein. Dies soll bis Mitte Februar erfolgen.
+Die Cube-Generierung erfolgt mittels des durch Kylin verfügbaren Webinterface unter der URL \url{http://localhost:7070/kylin}. Es wurden im Verlauf des Praktikums mehrere Projekte mit verschiedenen Inhalten in Kylin angelegt. In jedem Projekt mussten als Grundlage zur Cube-Erzeugung die benötigten Tabellen aus Hive importiert werden. Anschließend wurde der Cube zur Datenanalyse erzeugt. Die Cubes wurden so entworfen, dass sie möglichst umfangreiche Analysen zulassen. Nach der Cube Konfiguration wurde dieser über einen zugehörigen Job gebaut. Dies dauerte ca. 80 Minuten und wurde durch von Kylin erzeugte Map-Reduce-Jobs umgesetzt. Der erzeugte Cube ist dann in HBASE persistiert. Sobald dieser Punkt erreicht ist, kann über das Query-Interface von Kylin (basierend auf Apache Calcite) auf die Daten des Cubes zugegriffen werden. 
 
 \subsection{Analyse der Daten aus den Cubes}
 
-Nach der Generierung der Cubes sollen darauf u.\,a. die in der Aufgabenstellung beschrieben Abfragen ausgeführt werden. Dies soll bis spätestens 1 Woche vor der Vorstellung der Ergebnisse am 4. März 2016 erfolgen.
+Im Projekt lag der Schwerpunkt bei der Analyse der Daten nicht auf den Ergebnissen der einzelnen Abfragen sondern auf dem Vergleich der Ausführungszeiten der Abfragen a) basierend auf den in Kylin erzeugten Cubes und b) direkt auf den Tabellen in Hive. Es wurden verschiedene Abfragen entworfen, die bei Ausführung auf dem Cube in Kylin und auch direkt auf den Hive Tabellen die gleichen Ergebnisse liefern. Diese Abfragen sind im Webinterface von Kylin im Bereich "Query" als \glqq gespeicherte Queries\grqq{} hinterlegt. Die Abfragen müssen zur Verwendung in der Hive Shell allerdings teilweise modifiziert werden, da der Funktionsumfang des auf Apache Calcite basierenden Query Interface von Kylin und der Hive Shell unterschiedlich ist.
+
+\section{Ergebnisse}
+\label{sec:Ergebnisse}
+
+Die Analyse der DBLP Daten ergab, dass diese für eine Zitationsanalyse ungeeignet sind. Die DBLP Daten enthalten prinzipiell nur wenige Verweise zu Zitierungen. Darüber hinaus sind die vorhandenen Verweise (verglichen mit Google Scholar) unvollständig. Zusätzlich wurde deutlich, dass die DBLP Daten für ältere Publikationen (vor 2000 publiziert) qualitativ und quantitativ deutlich besser erfasst sind, als für aktuellere. Im Bezug auf die Analyse von Zitierungen wäre es daher interessant zukünftig z.B. Google Scholar als Datenquelle zu verwenden.\medskip\par
+
+\noindent Hinsichtlich der Ausführungszeiten einzelner Abfragen ergab sich eine deutliche Beschleunigung bei Verwendung der mit Kylin erzeugten Cubes im Vergleich zu den Ausführungszeiten bei direkter Verwendung der Hive Tabellen über die Hive Shell. Die in der Abschlusspräsentation dargestellten Werte sind jedoch nur als grober Identifikator für die Verbesserung der Performance bzgl. der Ausführungszeit der einzelnen Abfragen zu verstehen. Hier gibt es sowohl in Kylin, als auch in Hive mehrere Optimierungsmöglichkeiten, welche einen Einfluss auf die erhaltenen Messwerte haben können.
+
+\subsection{Fazit}
+
+Abschließend kann festgehalten werden, dass alle im Projekt verwendeten Technologien durchaus ihre Daseinsberechtigung haben. Es gibt jedoch bei allen Tools noch den ein oder anderen Bug, den es im Verlauf der Umsetzung zu beheben gilt. Die Auswertung der Ergebnisse zeigt, dass Kylin die Analyse der Daten deutlich beschleunigen kann. Allerdings gibt es noch einige Konfigurationsmöglichkeiten, die Einfluss auf die in Kylin oder Hive erreichbaren Werte haben können. Die Betrachtung dieser noch ungenutzten Möglichkeiten, sowie ein Vergleich von Kylin mit einer ähnlichen Technologie wie z.B. Cloudera Impala, stellen spannende Aufgaben für die Zukunft dar.
 
 \end{document}
