@@ -1,0 +1,2 @@
+hive --hiveconf DB_SCHEMA=$1 -f schema.sql
+hive --hiveconf DB_SCHEMA=$1 TABLE_PATH=$2 -f tables.sql

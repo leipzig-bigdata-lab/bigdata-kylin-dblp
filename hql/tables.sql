@@ -12,7 +12,7 @@ row format delimited
 fields terminated by "," escaped by "\\"
 lines terminated by "\n"
 stored as textfile
-location '/${hiveconf:TARGET}/${hiveconf:TYPE}/time';
+location '${hiveconf:TABLE_PATH}/time';
 
 drop table if exists Venue_Series;
 create external table if not exists Venue_Series (
@@ -23,7 +23,7 @@ row format delimited
 fields terminated by "," escaped by "\\"
 lines terminated by "\n"
 stored as textfile
-location '/${hiveconf:TARGET}/${hiveconf:TYPE}/venue_series';
+location '${hiveconf:TABLE_PATH}/venue_series';
 
 drop table if exists Title;
 create external table if not exists Title (
@@ -33,7 +33,7 @@ row format delimited
 fields terminated by "," escaped by "\\"
 lines terminated by "\n"
 stored as textfile
-location '/${hiveconf:TARGET}/${hiveconf:TYPE}/title';
+location '${hiveconf:TABLE_PATH}/title';
 
 drop table if exists Author;
 create external table if not exists Author (
@@ -44,7 +44,7 @@ row format delimited
 fields terminated by "," escaped by "\\"
 lines terminated by "\n"
 stored as textfile
-location '/${hiveconf:TARGET}/${hiveconf:TYPE}/author';
+location '${hiveconf:TABLE_PATH}/author';
 
 drop table if exists Document_Type;
 create external table if not exists Document_Type (
@@ -55,7 +55,7 @@ row format delimited
 fields terminated by "," escaped by "\\"
 lines terminated by "\n"
 stored as textfile
-location '/${hiveconf:TARGET}/${hiveconf:TYPE}/document_type';
+location '${hiveconf:TABLE_PATH}/document_type';
 
 drop table if exists Publication;
 create external table if not exists Publication (
@@ -72,6 +72,6 @@ row format delimited
 fields terminated by "," escaped by "\\"
 lines terminated by "\n"
 stored as textfile
-location '/${hiveconf:TARGET}/${hiveconf:TYPE}/publication';
+location '${hiveconf:TABLE_PATH}/publication';
 
 use default;

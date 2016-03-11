@@ -44,19 +44,20 @@ cat "dblp.xml" | java -jar pub-importer.jar dblp --csv-format escaped "/path/in/
 ### pub-formatter
 
 Erzeugung des Sternschemas aus den vom `pub-importer` erzeugten CSV-Dateien
-mit Hilfe von Flink. Die Ausgabe erfolgt in Hive-kompatiblen CSV-Dateien, auf
-denen direkt externe Hive-Tabellen definiert werden können.
+mit Hilfe von Flink. Die Ausgabe erfolgt in Hive-kompatiblen CSV-Dateien.
 
 ```sh
 flink run pub-formatter.jar -type dblp -source "hdfs:////path/in/hdfs" -target "hdfs:////hive/dblp"
 ```
 
-### Definieren des externen Hivetabellen
+#### Definition externer Hive-Tabellen
 
-Die mit dem `pub-formatter` erzeugten CSV-Dateien können und als externe Hivetabellen benutzt und als solche definiert werden. Dazu wurde [Skript][hqlscript] angelegt, das ein Schema und die Tabellen definiert.
+Auf den vom `pub-formatter` erzeugten CSV-Dateien können direkt externe
+Hive-Tabellen definiert werden. Dazu wurde ein [Skript][hqlscript] angelegt,
+das eine neue Datenbank und die Tabellen des Sternschemas anlegt:
 
 ```sh
-hql/create_schema_with_tables.sql dblp hive/dblp dblp
+hql/create-star-schema "db-name" "/hive/dblp"
 ```
 
 [solution]: https://github.com/klemens/bigdata-kylin-dblp/releases/download/attestation-3/solution-outline.pdf
@@ -64,4 +65,4 @@ hql/create_schema_with_tables.sql dblp hive/dblp dblp
 [dblp]: http://dblp.uni-trier.de/
 [install]: ./INSTALL.md
 [xml]: http://dblp.uni-trier.de/xml/
-[hqlscript]: ./hql/create_schema_with_tables.sh
+[hqlscript]: ./hql/create-star-schema
