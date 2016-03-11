@@ -51,8 +51,17 @@ denen direkt externe Hive-Tabellen definiert werden können.
 flink run pub-formatter.jar -type dblp -source "hdfs:////path/in/hdfs" -target "hdfs:////hive/dblp"
 ```
 
+### Definieren des externen Hivetabellen
+
+Die mit dem `pub-formatter` erzeugten CSV-Dateien können und als externe Hivetabellen benutzt und als solche definiert werden. Dazu wurde [Skript][hqlscript] angelegt, das ein Schema und die Tabellen definiert.
+
+```sh
+hql/create_schema_with_tables.sql dblp hive/dblp dblp
+```
+
 [solution]: https://github.com/klemens/bigdata-kylin-dblp/releases/download/attestation-3/solution-outline.pdf
 [presentation]: https://github.com/klemens/bigdata-kylin-dblp/releases/download/attestation-3/presentation.pdf
 [dblp]: http://dblp.uni-trier.de/
 [install]: ./INSTALL.md
 [xml]: http://dblp.uni-trier.de/xml/
+[hqlscript]: ./hql/create_schema_with_tables.sql

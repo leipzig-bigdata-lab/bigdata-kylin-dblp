@@ -56,14 +56,13 @@ Da die meisten Dienste standardmäßig an allen Adressen (und damit auch der öf
 
 \section{Datenbankschema}
 
-Das folgende vorläufige Datenbankschema basiert auf dem in der Aufgabenstellung vorgeschlagenen und wurde nur an einigen Stellen geringfügig angepasst. Einige der Schlüssel werden voraussichtlich keine Ganzzahlen, sondern Zeichenketten sein.
+Das folgende vorläufige Datenbankschema basiert auf dem in der Aufgabenstellung vorgeschlagenen und wurde nur an einigen Stellen angepasst. 
 
 \noindent
-\includegraphics[width=\textwidth]{pics/schema.png}
+\includegraphics[width=\textwidth]{pics/Star-schema-final.png}
 
 \begin{itemize}
-    \item \texttt{Publication\_Citing\_Map}: Zitat einer Publikation (nicht Teil des endgültigen Sternschemas)
-    \item \texttt{Publication}: Zitierungszahlen werden aus \texttt{Publication\_Citing\_Map} generiert
+    \item \texttt{Publication}: Dimensionstabelle; Zitierungszahlen werden via Flink bei der Transformation generiert
     \item \texttt{Document\_Type}: Typ der Publication, z.\,B. Journal, Artikel, Kollektion
 \end{itemize}
 
@@ -77,7 +76,7 @@ Alternativ wird oft \texttt{XmlInputFormat} von Mahout (einem Hadoop-basierten M
 
 Aus diesem Grund haben wir ein eigenes Tool für den Import entwickelt. Der \texttt{pub-importer}\footnote{\url{https://github.com/klemens/bigdata-kylin-dblp}} liest die \texttt{dblp.xml} aus einer Datei oder von \texttt{stdin}, verwendet StAX für das Parsen und schreibt das Ergebnis anschließend direkt ins HDFS. Dabei ist unabhängig von der Größe der Eingabedatei der Speicherverbrauch konstant.
 
-Die exportierten Daten werden dabei in einem zu Hive (oder alternativ zu unserem \texttt{dblp-formatter}) kompatiblen Format geschrieben (CSV mit Backslash als Escape-Zeichen oder mit Anführungszeichen versehen) und bestehen aus zwei Dateien: Einmal die \texttt{Collections} wie Konferenzberichte oder Bücher und schließlich die \texttt{Publications} an sich mit entsprechenden Verweisen auf die \texttt{Collections}.
+Die exportierten Daten werden dabei in einem zu Hive (oder alternativ zu unserem \texttt{pub-formatter}) kompatiblen Format geschrieben (CSV mit Backslash als Escape-Zeichen oder mit Anführungszeichen versehen) und bestehen aus zwei Dateien: Einmal die \texttt{Collections} wie Konferenzberichte oder Bücher und schließlich die \texttt{Publications} an sich mit entsprechenden Verweisen auf die \texttt{Collections}.
 
 Zusätzlich kann der \texttt{pub-importer} auch den im Data-Warehouse-Praktikum verwendeten, unvollständigen xml-Dump von ACM lesen und auf die gleiche Weise ins HDFS schreiben. Da dort jedoch keine Informationen über die Journals enthalten sind, entfällt hierbei die \texttt{Collections}-Datei.
 
@@ -93,7 +92,7 @@ Aus diesen Gründen ist das Verhältnis zwischen Aufwand und Nutzen sehr schlech
 
 \subsection{Datentransformation mit Apache Flink}
 
-Nach den Problemen mit PDI wurde die Datentransformation in das Sternschema mittels Apacha Flink implementiert, woraus dann der \texttt{dblp-formatter} entstand.
+Nach den Problemen mit PDI wurde die Datentransformation in das Sternschema mittels Apacha Flink implementiert, woraus dann der \texttt{pub-formatter} entstand.
 
 Allerdings gab es auch hier einige Komplikationen: Das Problem ist die Verwendung von zwei verschiedenen CSV-Implementierungen, einmal der CSVReader von Apache Commons und dann der CSVReader von Apache Flink, wobei sich letzterer an keinerlei Standards (RFC 4180) hält und sich auch nicht ausreichend konfigurieren lässt. So unterstützt er nur die Quoting-Variante zum Speichern von CSVs. Allerdings erwartet er nicht wie üblich eine Verdopplung des Quoting-Zeichens, wenn dieses innerhalb eines Strings auftaucht, sondern erwartet das Escaping des Quoting-Zeichens mit einem Backslash, was weder dem Standard entspricht, noch mit dem CSVWriter von Apache Commons ausgegeben werden kann.
 
@@ -101,7 +100,7 @@ Abgesehen von diesem Problem läuft der Transformationsvorgang reibungslos. So w
 
 \subsection{Externe Hive-Tabellen}
 
-Nach Abschluss des Datenverarbeitungsschrittes, bei dem die Daten mit dem \texttt{dblp-formatter} in einzelne CSV-Dateien überführt werden, wurden darauf externe Hive-Tabellen definiert, um den Zugriff aus Kylin zu ermöglichen.
+Nach Abschluss des Datenverarbeitungsschrittes, bei dem die Daten mit dem \texttt{pub-formatter} in einzelne CSV-Dateien überführt werden, wurden darauf externe Hive-Tabellen definiert, um den Zugriff aus Kylin zu ermöglichen.
 
 \section{Analyse}
 \label{sec:Analyse}
