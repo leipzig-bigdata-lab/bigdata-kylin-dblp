@@ -21,7 +21,7 @@ under the License.
 	<modelVersion>4.0.0</modelVersion>
 	
 	<groupId>de.unileipzig.bigprak</groupId>
-	<artifactId>dblp-formatter</artifactId>
+	<artifactId>pub-formatter</artifactId>
 	<version>0.5</version>
 	<packaging>jar</packaging>
 

@@ -25,7 +25,6 @@ public class AppendTupleFields<T0 extends Tuple, T1 extends Tuple> implements Fl
 	
 	/**
 	 * append additional fields for the final tables
-	 * for now it only handles String.class and Long.class
 	 * @param value
 	 * @param out
 	 * @throws Exception

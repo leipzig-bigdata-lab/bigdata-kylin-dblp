@@ -1,8 +1,5 @@
 package de.bigprak.transform;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.csv.QuoteMode;
@@ -78,15 +75,11 @@ public class DBLPFormatJob {
 	//
 	//	Program
 	//
-	private static String LINE_DELIMITTER;
-	private static String FIELD_DELIMITTER;
-	private final static char QUOTE_CHAR = '"';
 	private static String SOURCE_PATH;
 	private static String TARGET_PATH;
 	private static String TYPE;
-	private static Map<String, Map<String, Integer>> libMap = new HashMap<>();
 	
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public static void main(String[] args) throws Exception {
 		//get parameters from command line
 		processArgs(args);
@@ -211,10 +204,6 @@ public class DBLPFormatJob {
 						.flatMap(new KeyCleaner<Tuple7<Long, String, String, String, Long, String, String>>(5));//remove :ref from venue series
 			}
 			
-			
-			
-			
-			
 			//join the dataset with extracted dimension 'tables'
 			//join on names, titles, ...
 			//get a map of fact table id and dimension table id
@@ -229,8 +218,6 @@ public class DBLPFormatJob {
 				citeJoin = pubs.coGroup(cites).where(2).equalTo(1).with(new Count());
 				documentTypeJoin = pubs.coGroup(documentTypes).where(1).equalTo(1).with(new Join());
 				venueSeriesJoin = pubs.coGroup(venueSeries).where(5).equalTo(2).with(new Join());
-			} else {
-//				citeJoin = pubs.coGroup(acmCiteCount).where(0).equalTo(0).with(new Join());
 			}
 			
 			//prepare fact table 
@@ -253,8 +240,6 @@ public class DBLPFormatJob {
 			publications = publications.coGroup(titleJoin).where(0).equalTo(0).with(new PublicationMerge(1));
 			publications = publications.coGroup(authorJoin).where(0).equalTo(0).with(new PublicationMerge(9));
 			
-//			publications = publications.coGroup(authors).where(9).equalTo(0).with(new PublicationMerge(10));
-			
 			//save dimension and fact table/s
 			if(isDBLP) {
 				saveDataSetAsCsv(TARGET_PATH + "/" + TYPE + "/" + "document_type/document_type.csv", documentTypes, 0, csvFormat);
@@ -263,7 +248,6 @@ public class DBLPFormatJob {
 			saveDataSetAsCsv(TARGET_PATH + "/" + TYPE + "/" + "title/title.csv", titles, 0, csvFormat);
 			saveDataSetAsCsv(TARGET_PATH + "/" + TYPE + "/" + "time/time.csv", times, 0, csvFormat);
 			saveDataSetAsCsv(TARGET_PATH + "/" + TYPE + "/" + "author/author.csv", authors, 0, csvFormat);
-//			saveDataSetAsCsv(TARGET_PATH + "/" + TYPE + "/" + "publication_author_map/publication_author_map.csv", authorJoin, 0, csvFormat);
 			saveDataSetAsCsv(TARGET_PATH + "/" + TYPE + "/" + "publication/publication.csv", publications, 0, csvFormat);
 			
 			env.execute();
@@ -282,16 +266,6 @@ public class DBLPFormatJob {
         	.choices("acm", "dblp")
         	.type(String.class)
         	.required(true);
-        
-        parser.addArgument("-ld")
-              .help("line delimitter")
-              .type(String.class)
-              .setDefault("\n");
-
-        parser.addArgument("-fd")
-	        .help("field delimitter")
-	        .type(String.class)
-	        .setDefault(",");
         
         parser.addArgument("-source")
         	.help("source path")
@@ -312,8 +286,6 @@ public class DBLPFormatJob {
         Namespace args = createArgsParser().parseArgsOrFail(rawArgs);
         
         TYPE = args.getString("type");
-        FIELD_DELIMITTER = args.getString("fd");
-        LINE_DELIMITTER = args.getString("ld");
         SOURCE_PATH = args.getString("source");
         TARGET_PATH = args.getString("target");
         
