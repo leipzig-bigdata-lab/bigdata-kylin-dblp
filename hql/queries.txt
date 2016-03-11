@@ -1,0 +1,49 @@
+########################################################################################################################
+#DBLP
+HIVE - VIEW CREATION:
+	CREATE VIEW IF NOT EXISTS dblp.author_pub(publication_id, author_id, name, institution_id) COMMENT 'JOIN between author and publication_author_map' AS SELECT DISTINCT publication_author_map.publication_id, author.author_id, author.name, author.institution_id FROM author RIGHT JOIN publication_author_map ON author.author_id = publication_author_map.author_id;
+
+KYLIN - TABLE IMPORT:	dblp.author,dblp.author_pub,dblp.document_type,dblp.institution,dblp.publication,dblp.publication_author_map,dblp.publication_citing_map,dblp.timeinfo,dblp.title,dblp.venue_series
+########################################################################################################################
+
+
+
+########################################################################################################################
+#ACM
+HIVE - VIEW CREATION:
+	CREATE VIEW IF NOT EXISTS acm.author_pub(publication_id, author_id, name, institution_id) COMMENT 'JOIN between author and publication_author_map' AS SELECT DISTINCT publication_author_map.publication_id, author.author_id, author.name, author.institution_id FROM author RIGHT JOIN publication_author_map ON author.author_id = publication_author_map.author_id;
+
+KYLIN - TABLE IMPORT:	acm.author,acm.author_pub,acm.document_type,acm.institution,acm.publication,acm.publication_author_map,acm.publication_citing_map,acm.timeinfo,acm.title,acm.venue_series
+########################################################################################################################
+
+	
+
+########################################################################################################################
+#DBLPALT
+KYLIN - TABLE IMPORT:
+dblpalt.document_type,dblpalt.publication,dblpalt.timeinfo,dblpalt.title,dblpalt.venue_series
+########################################################################################################################
+
+
+########################################################################################################################
+#HQL OLAP STATEMENTS for schema DBLPALT
+	SELECT COUNT(p.publication_id) 
+	FROM publication p
+	WHERE p.author_id = 404586--'Erhard Rahm'
+	;
+	
+	SELECT MAX(COUNT(p.publication_id)), p.author_name
+	FROM publication p
+	GROUP BY p.author_name
+	SORT BY DESC
+	;
+
+	select max(num_c) as max_c, author_name
+	from (
+		select sum(citings_dblp) as num_c, author_name 
+		from publication group by author_name
+	) 
+	where time_id = 79
+	group by author_name
+	order by max_c desc
+	limit 10;
