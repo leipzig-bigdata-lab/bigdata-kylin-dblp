@@ -60,8 +60,8 @@ das eine neue Datenbank und die Tabellen des Sternschemas anlegt:
 hql/create-star-schema "db-name" "/hive/dblp"
 ```
 
-[solution]: https://github.com/klemens/bigdata-kylin-dblp/releases/download/attestation-3/solution-outline.pdf
-[presentation]: https://github.com/klemens/bigdata-kylin-dblp/releases/download/attestation-3/presentation.pdf
+[solution]: ./documents/solution-outline.pdf
+[presentation]: ./documents/presentation.pdf
 [dblp]: http://dblp.uni-trier.de/
 [install]: ./INSTALL.md
 [xml]: http://dblp.uni-trier.de/xml/
