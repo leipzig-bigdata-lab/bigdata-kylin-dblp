@@ -64,4 +64,4 @@ hql/create_schema_with_tables.sql dblp hive/dblp dblp
 [dblp]: http://dblp.uni-trier.de/
 [install]: ./INSTALL.md
 [xml]: http://dblp.uni-trier.de/xml/
-[hqlscript]: ./hql/create_schema_with_tables.sql
+[hqlscript]: ./hql/create_schema_with_tables.sh
