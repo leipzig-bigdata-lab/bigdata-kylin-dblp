@@ -39,6 +39,12 @@ import net.sourceforge.argparse4j.inf.Namespace;
 import net.sourceforge.argparse4j.inf.Subparser;
 import net.sourceforge.argparse4j.inf.Subparsers;
 
+/**
+ * Implements the CLI for the pub-importer
+ *
+ * Uses the hadoop hdfs and apache commons csv lib to write the parsed
+ * xml directly into the hdfs. Supports dblp and acm.
+ */
 public class Main {
     public static void main(String[] rawArgs) {
         // force english output in cli help messages

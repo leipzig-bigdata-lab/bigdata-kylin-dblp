@@ -17,6 +17,10 @@ import bigdata.ProgressReporter;
 import bigdata.dblp.records.Collection;
 import bigdata.dblp.records.Publication;
 
+/**
+ * Parse the dblp.xml using a StAX-Parser and write the resulting
+ * Publications and Collections as CSVs to the given CSVPrinters.
+ */
 public class Parser {
     private static Set<String> validProperties;
 

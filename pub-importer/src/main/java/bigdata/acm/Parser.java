@@ -17,6 +17,11 @@ import org.apache.commons.csv.CSVPrinter;
 import bigdata.ProgressReporter;
 import bigdata.acm.records.Publication;
 
+/**
+ * Parse the acm.xml that was used in the data-warehouse practicum at Leipzig
+ * University using a StAX-Parser and write the resulting Publications as CSVs
+ * to the given CSVPrinter.
+ */
 public class Parser {
     private static Set<String> validProperties;
 
