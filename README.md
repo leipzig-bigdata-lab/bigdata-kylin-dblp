@@ -1,4 +1,4 @@
-# Zitierungsanalyse mit Kylin
+# Publikationsanalyse mit Kylin
 
 Beitrag zum „Big-Data-Praktikum“ der Fakultät für Mathematik und Informatik
 an der Universität Leipzig.
@@ -7,7 +7,7 @@ an der Universität Leipzig.
 
 Das Ziel dieser Praktikumsaufgabe bestand in der Untersuchung der
 Praxistauglichkeit von Apache Kylin für die Data-Warehouse-Analyse von großen
-Datenmengen. Dazu sollte eine Zitierungsanalyse auf Basis der Daten der [dblp]
+Datenmengen. Dazu sollte eine Zitierungs- bzw. Publikationsanalyse auf Basis der Daten der [dblp]
 durchgeführt werden.
 
 Details zum Ablauf und den Ergebnissen finden sich in der
